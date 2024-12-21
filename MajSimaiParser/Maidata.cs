@@ -2,18 +2,19 @@
 using System.IO;
 using System.Text;
 
-namespace MajSimaiDecode
+namespace MajSimaiParser
 {
     public class Maidata
     {
-        public string? title;
-        public string? artist;
-        public string? designer;
-        public string? other_commands;
+        public string title;
+        public string artist;
+        public string designer;
+        public string other_commands;
         public float first;
         public string[] fumens = new string[7];
         public string[] levels = new string[7];
-        public Maidata(string path) {
+        public Maidata(string path)
+        {
 
             title = "";
             artist = "";
@@ -63,7 +64,7 @@ namespace MajSimaiDecode
             }
             catch (Exception e)
             {
-                throw new Exception("在maidata.txt第" + (i + 1) + "行:\n" + e.Message+ "读取谱面时出现错误");
+                throw new Exception("在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
             }
         }
         private string GetValue(string varline)

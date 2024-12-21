@@ -1,7 +1,7 @@
 ﻿using System.Collections.Generic;
 using System.Linq;
 
-namespace MajSimaiDecode
+namespace MajSimaiParser
 {
     public class SimaiTimingPoint
     {
@@ -80,9 +80,9 @@ namespace MajSimaiDecode
             //删除第一个NOTE
             foreach (var item in newNoteContent)
             {
-                var note2text = note1.startPosition + item;
+                var note2text = note1.StartPosition + item;
                 var note2 = getSingleNote(note2text);
-                note2.isSlideNoHead = true;
+                note2.IsSlideNoHead = true;
                 simaiNotes.Add(note2);
             }
 
@@ -95,35 +95,35 @@ namespace MajSimaiDecode
 
             if (isTouchNote(noteText))
             {
-                simaiNote.touchArea = noteText[0];
-                if (simaiNote.touchArea != 'C') simaiNote.startPosition = int.Parse(noteText[1].ToString());
-                else simaiNote.startPosition = 8;
-                simaiNote.noteType = SimaiNoteType.Touch;
+                simaiNote.TouchArea = noteText[0];
+                if (simaiNote.TouchArea != 'C') simaiNote.StartPosition = int.Parse(noteText[1].ToString());
+                else simaiNote.StartPosition = 8;
+                simaiNote.Type = SimaiNoteType.Touch;
             }
             else
             {
-                simaiNote.startPosition = int.Parse(noteText[0].ToString());
-                simaiNote.noteType = SimaiNoteType.Tap; //if nothing happen in following if
+                simaiNote.StartPosition = int.Parse(noteText[0].ToString());
+                simaiNote.Type = SimaiNoteType.Tap; //if nothing happen in following if
             }
 
-            if (noteText.Contains('f')) simaiNote.isHanabi = true;
+            if (noteText.Contains('f')) simaiNote.IsHanabi = true;
 
             //hold
             if (noteText.Contains('h'))
             {
                 if (isTouchNote(noteText))
                 {
-                    simaiNote.noteType = SimaiNoteType.TouchHold;
-                    simaiNote.holdTime = getTimeFromBeats(noteText);
+                    simaiNote.Type = SimaiNoteType.TouchHold;
+                    simaiNote.HoldTime = getTimeFromBeats(noteText);
                     //Console.WriteLine("Hold:" +simaiNote.touchArea+ simaiNote.startPosition + " TimeLastFor:" + simaiNote.holdTime);
                 }
                 else
                 {
-                    simaiNote.noteType = SimaiNoteType.Hold;
+                    simaiNote.Type = SimaiNoteType.Hold;
                     if (noteText.Last() == 'h')
-                        simaiNote.holdTime = 0;
+                        simaiNote.HoldTime = 0;
                     else
-                        simaiNote.holdTime = getTimeFromBeats(noteText);
+                        simaiNote.HoldTime = getTimeFromBeats(noteText);
                     //Console.WriteLine("Hold:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.holdTime);
                 }
             }
@@ -131,18 +131,18 @@ namespace MajSimaiDecode
             //slide
             if (isSlideNote(noteText))
             {
-                simaiNote.noteType = SimaiNoteType.Slide;
-                simaiNote.slideTime = getTimeFromBeats(noteText);
+                simaiNote.Type = SimaiNoteType.Slide;
+                simaiNote.SlideTime = getTimeFromBeats(noteText);
                 var timeStarWait = getStarWaitTime(noteText);
-                simaiNote.slideStartTime = time + timeStarWait;
+                simaiNote.SlideStartTime = time + timeStarWait;
                 if (noteText.Contains('!'))
                 {
-                    simaiNote.isSlideNoHead = true;
+                    simaiNote.IsSlideNoHead = true;
                     noteText = noteText.Replace("!", "");
                 }
                 else if (noteText.Contains('?'))
                 {
-                    simaiNote.isSlideNoHead = true;
+                    simaiNote.IsSlideNoHead = true;
                     noteText = noteText.Replace("?", "");
                 }
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
@@ -151,7 +151,7 @@ namespace MajSimaiDecode
             //break
             if (noteText.Contains('b'))
             {
-                if (simaiNote.noteType == SimaiNoteType.Slide)
+                if (simaiNote.Type == SimaiNoteType.Slide)
                 {
                     // 如果是Slide 则要检查这个b到底是星星头的还是Slide本体的
 
@@ -163,16 +163,16 @@ namespace MajSimaiDecode
                         {
                             // 如果b不是最后一个字符 我们就检查b之后一个字符是不是`[`符号：如果是 那么就是break slide
                             if (noteText[startIndex + 1] == '[')
-                                simaiNote.isSlideBreak = true;
+                                simaiNote.IsSlideBreak = true;
                             else
                                 // 否则 那么不管这个break出现在slide的哪一个地方 我们都认为他是星星头的break
                                 // SHIT CODE!
-                                simaiNote.isBreak = true;
+                                simaiNote.IsBreak = true;
                         }
                         else
                         {
                             // 如果b符号是整个文本的最后一个字符 那么也是break slide（Simai语法）
-                            simaiNote.isSlideBreak = true;
+                            simaiNote.IsSlideBreak = true;
                         }
 
                         startIndex++;
@@ -181,7 +181,7 @@ namespace MajSimaiDecode
                 else
                 {
                     // 除此之外的Break就无所谓了
-                    simaiNote.isBreak = true;
+                    simaiNote.IsBreak = true;
                 }
 
                 noteText = noteText.Replace("b", "");
@@ -190,20 +190,20 @@ namespace MajSimaiDecode
             //EX
             if (noteText.Contains('x'))
             {
-                simaiNote.isEx = true;
+                simaiNote.IsEx = true;
                 noteText = noteText.Replace("x", "");
             }
 
             //starHead
             if (noteText.Contains('$'))
             {
-                simaiNote.isForceStar = true;
+                simaiNote.IsForceStar = true;
                 if (noteText.Count(o => o == '$') == 2)
-                    simaiNote.isFakeRotate = true;
+                    simaiNote.IsFakeRotate = true;
                 noteText = noteText.Replace("$", "");
             }
 
-            simaiNote.noteContent = noteText;
+            simaiNote.RawContent = noteText ?? string.Empty;
             return simaiNote;
         }
 

@@ -1,14 +1,14 @@
 ﻿using System;
 using System.Collections.Generic;
 
-namespace MajSimaiDecode
+namespace MajSimaiParser
 {
     public class SimaiProcess
     {
         /// <summary>
         ///     the timing points that contains notedata
         /// </summary>
-        public List<SimaiTimingPoint> notelist = new List<SimaiTimingPoint>() ;
+        public List<SimaiTimingPoint> notelist = new List<SimaiTimingPoint>();
 
         /// <summary>
         ///     the timing points made by "," in maidata
@@ -168,7 +168,7 @@ namespace MajSimaiDecode
                 notelist = _notelist;
                 timinglist = _timinglist;
 
-                for(int i=0;i<notelist.Count;i++)
+                for (var i = 0; i < notelist.Count; i++)
                 {
                     var note = notelist[i];
                     var notes = new SimaiTimingPoint(note.time, note.rawTextPositionX, note.rawTextPositionY,
@@ -181,7 +181,7 @@ namespace MajSimaiDecode
             }
             catch (Exception e)
             {
-                throw new Exception("Error at " + Ycount + "," + Xcount + "\n" +e.Message);
+                throw new Exception("Error at " + Ycount + "," + Xcount + "\n" + e.Message);
             }
         }
 

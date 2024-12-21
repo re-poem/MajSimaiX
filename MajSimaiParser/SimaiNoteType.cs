@@ -1,4 +1,4 @@
-﻿namespace MajSimaiDecode
+﻿namespace MajSimaiParser
 {
     public enum SimaiNoteType
     {

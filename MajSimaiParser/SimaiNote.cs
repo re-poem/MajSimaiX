@@ -1,23 +1,23 @@
-﻿namespace MajSimaiDecode
+﻿namespace MajSimaiParser
 {
     public class SimaiNote
     {
-        public double holdTime;
-        public bool isBreak;
-        public bool isEx;
-        public bool isFakeRotate;
-        public bool isForceStar;
-        public bool isHanabi;
-        public bool isSlideBreak;
-        public bool isSlideNoHead;
+        public SimaiNoteType Type { get; set; }
+        public int StartPosition { get; set; } = 1; //键位（1-8）
 
-        public string? noteContent; //used for star explain
-        public SimaiNoteType noteType;
+        public double HoldTime { get; set; }
+        public bool IsBreak { get; set; }
+        public bool IsEx { get; set; }
+        public bool IsFakeRotate { get; set; }
+        public bool IsForceStar { get; set; }
+        public bool IsHanabi { get; set; }
+        public bool IsSlideBreak { get; set; }
+        public bool IsSlideNoHead { get; set; }
 
-        public double slideStartTime;
-        public double slideTime;
+        public string RawContent { get; set; } //used for star explain
 
-        public int startPosition = 1; //键位（1-8）
-        public char touchArea = ' ';
+        public double SlideStartTime { get; set; }
+        public double SlideTime { get; set; }
+        public char TouchArea { get; set; } = ' ';
     }
 }
