@@ -23,7 +23,7 @@ namespace MajSimaiParser
             var fileContent = Encoding.UTF8.GetString(memoryBuffer.ToArray());
             var metadata = await ReadMetadataAsync(fileContent);
 
-            List<SimaiChart> charts = new List<SimaiChart>();
+            SimaiChart[] charts = new SimaiChart[7];
             Task<SimaiChart>[] tasks = new Task<SimaiChart>[7];
             for (var i = 0; i < 7; i++)
             {
@@ -33,14 +33,15 @@ namespace MajSimaiParser
                 tasks[i] = ParseChartAsync(level, designer, fumen);
             }
             await Task.WhenAll(tasks);
-            foreach (var task in tasks)
+            for(var i = 0; i < 7; i++)
             {
+                var task = tasks[i];
                 if (task.IsFaulted)
                     throw task.Exception;
                 else
-                    charts.Add(task.Result);
+                    charts[i] = task.Result;
             }
-            return new SimaiFile(filePath, metadata.Title, metadata.Artist, metadata.Offset, charts.ToArray(), metadata.Fumens, metadata.Commands);
+            return new SimaiFile(filePath, metadata.Title, metadata.Artist, metadata.Offset, charts, metadata.Fumens, metadata.Commands);
         }
         public async Task<SimaiMetadata> ParseMetadataAsync(string filePath)
         {
