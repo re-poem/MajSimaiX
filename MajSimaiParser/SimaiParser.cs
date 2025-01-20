@@ -153,19 +153,19 @@ namespace MajSimaiParser
         }
         async Task<SimaiChart> ParseChartAsync(string level,string designer, string fumen)
         {
-            return await Task.Run(() =>
+            return await Task.Run(async () =>
             {
                 if(string.IsNullOrEmpty(fumen))
                 {
                     return new SimaiChart(level, designer, null, null);
                 }
-                var notelist = new List<SimaiTimingPoint>();
+                var noteRawTiminglist = new List<SimaiRawTimingPoint>();
                 var timinglist = new List<SimaiTimingPoint>();
 
                 float bpm = 0;
                 var curHSpeed = 1f;
                 double time = 0; //in seconds
-                var beats = 4;
+                var beats = 4f;
                 var haveNote = false;
                 var noteTemp = "";
                 int Ycount = 0, Xcount = 0;
@@ -214,7 +214,10 @@ namespace MajSimaiParser
                                 Xcount++;
                             }
 
-                            bpm = float.Parse(bpm_s);
+                            if(!float.TryParse(bpm_s, out bpm))
+                            {
+                                throw new InvalidValueException(Ycount, bpm_s, "BPM value must be a floating point number");
+                            }
                             //Console.WriteLine("BPM" + bpm);
                             continue;
                         }
@@ -234,7 +237,10 @@ namespace MajSimaiParser
                                 Xcount++;
                             }
 
-                            beats = int.Parse(beats_s);
+                            if (!float.TryParse(beats_s, out beats))
+                            {
+                                throw new InvalidValueException(Ycount, beats_s, "Beats value must be a floating point number");
+                            }
                             //Console.WriteLine("BEAT" + beats);
                             continue;
                         }
@@ -258,7 +264,10 @@ namespace MajSimaiParser
                                 Xcount++;
                             }
 
-                            curHSpeed = float.Parse(hs_s);
+                            if (!float.TryParse(hs_s, out curHSpeed))
+                            {
+                                throw new InvalidValueException(Ycount, hs_s, "HSpeed value must be a floating point number");
+                            }
                             //Console.WriteLine("HS" + curHSpeed);
                             continue;
                         }
@@ -278,21 +287,21 @@ namespace MajSimaiParser
                                     foreach (var fakeEachGroup in fakeEachList)
                                     {
                                         Console.WriteLine(fakeEachGroup);
-                                        notelist.Add(new SimaiTimingPoint(fakeTime, Xcount, Ycount, fakeEachGroup, bpm,
+                                        noteRawTiminglist.Add(new SimaiRawTimingPoint(fakeTime, Xcount, Ycount, fakeEachGroup, bpm,
                                             curHSpeed));
                                         fakeTime += timeInterval;
                                     }
                                 }
                                 else
                                 {
-                                    notelist.Add(new SimaiTimingPoint(time, Xcount, Ycount, noteTemp, bpm, curHSpeed));
+                                    noteRawTiminglist.Add(new SimaiRawTimingPoint(time, Xcount, Ycount, noteTemp, bpm, curHSpeed));
                                 }
                                 //Console.WriteLine("Note:" + noteTemp);
 
                                 noteTemp = "";
                             }
 
-                            timinglist.Add(new SimaiTimingPoint(time, Xcount, Ycount, "", bpm));
+                            timinglist.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm));
 
 
                             time += 1d / (bpm / 60d) * 4d / beats;
@@ -300,16 +309,26 @@ namespace MajSimaiParser
                             haveNote = false;
                         }
                     }
-
-                    for (var i = 0; i < notelist.Count; i++)
+                    var noteTimingPoints = new SimaiTimingPoint[noteRawTiminglist.Count];
+                    //for (var i = 0; i < noteTiminglist.Count; i++)
+                    //{
+                    //    var note = noteTiminglist[i];
+                    //    var notes = new SimaiTimingPoint(note.time, note.rawTextPositionX, note.rawTextPositionY,
+                    //        note.notesContent, note.currentBpm, note.HSpeed);
+                    //    noteTiminglist[i].noteList = notes.getNotes();
+                    //}
+                    for (int i = 0; i < noteRawTiminglist.Count; i++)
                     {
-                        var note = notelist[i];
-                        var notes = new SimaiTimingPoint(note.time, note.rawTextPositionX, note.rawTextPositionY,
-                            note.notesContent, note.currentBpm, note.HSpeed);
-                        notelist[i].noteList = notes.getNotes();
+                        var rawTiming = noteRawTiminglist[i];
+                        var timingPoint = await rawTiming.ParseAsync();
+                        noteTimingPoints[i] = timingPoint;
                     }
 
-                    return new SimaiChart(level, designer, notelist.ToArray(), timinglist.ToArray());
+                    return new SimaiChart(level, designer, noteTimingPoints, timinglist.ToArray());
+                }
+                catch(InvalidValueException)
+                {
+                    throw;
                 }
                 catch (Exception e)
                 {
