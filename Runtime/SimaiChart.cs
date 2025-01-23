@@ -1,7 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-
 namespace MajSimai
 {
     public class SimaiChart
@@ -12,7 +11,7 @@ namespace MajSimai
         public SimaiTimingPoint[] Timings { get; }
         public bool IsEmpty => Notes.Length == 0;
         public static SimaiChart Empty { get; } = new SimaiChart(null, null, null, null);
-        public SimaiChart(string level, string designer, SimaiTimingPoint[] notes, SimaiTimingPoint[] timings)
+        public SimaiChart(string? level, string? designer, SimaiTimingPoint[]? notes, SimaiTimingPoint[]? timings)
         {
             Level = level is null ? string.Empty : level;
             Designer = designer is null ? "Undefined" : designer;
