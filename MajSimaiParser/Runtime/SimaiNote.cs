@@ -1,4 +1,4 @@
-﻿namespace MajSimaiParser
+﻿namespace MajSimai
 {
     public class SimaiNote
     {

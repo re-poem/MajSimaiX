@@ -1,7 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Text;
-namespace MajSimaiParser
+namespace MajSimai
 {
     public class SimaiFile
     {
@@ -12,8 +12,8 @@ namespace MajSimaiParser
         public SimaiChart[] Levels { get; }
         public string[] Fumens { get; }
         public SimaiCommand[] Commands { get; }
-        
-        public SimaiFile(string path,string title, string artist, float offset, SimaiChart[] levels,string[] fumens, SimaiCommand[] commands)
+
+        public SimaiFile(string path, string title, string artist, float offset, SimaiChart[] levels, string[] fumens, SimaiCommand[] commands)
         {
             if (levels is null)
                 throw new ArgumentNullException(nameof(levels));
@@ -21,10 +21,10 @@ namespace MajSimaiParser
                 throw new ArgumentNullException(nameof(fumens));
             if (levels.Length != 7)
                 throw new ArgumentException("The length of parameter \"levels\" must be 7");
-            if(fumens.Length != 7)
+            if (fumens.Length != 7)
                 throw new ArgumentException("The length of parameter \"fumens\" must be 7");
             Path = path;
-            Title = title; 
+            Title = title;
             Artist = artist;
             Offset = offset;
             Levels = levels;

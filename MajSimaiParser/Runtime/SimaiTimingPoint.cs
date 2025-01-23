@@ -1,12 +1,10 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
-#nullable enable
-namespace MajSimaiParser
+
+namespace MajSimai
 {
-    internal class SimaiRawTimingPoint
+    public class SimaiTimingPoint
     {
         public double Timing { get; } = 0;
         public float Bpm { get; } = -1;
@@ -14,8 +12,10 @@ namespace MajSimaiParser
         public string RawContent { get; } = string.Empty;
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
+        public SimaiNote[] Notes { get; } = Array.Empty<SimaiNote>();
+        public bool IsEmpty => Notes.Length == 0;
 
-        public SimaiRawTimingPoint(double timing, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
+        public SimaiTimingPoint(double timing, SimaiNote[] notes, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
             float hspeed = 1f)
         {
             Timing = timing;
@@ -24,15 +24,10 @@ namespace MajSimaiParser
             RawContent = rawContent.Replace("\n", "").Replace(" ", "");
             Bpm = bpm;
             HSpeed = hspeed;
-        }
-        public async Task<SimaiTimingPoint> ParseAsync()
-        {
-            return await Task.Run(() =>
+            if (notes != null)
             {
-                var notes = SimaiHelper.GetNotes(Timing, Bpm, RawContent);
-
-                return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
-            });
+                Notes = notes;
+            }
         }
     }
 }

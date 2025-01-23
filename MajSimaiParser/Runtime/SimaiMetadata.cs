@@ -1,6 +1,7 @@
-﻿using System;
+﻿using MajSimai;
+using System;
 
-namespace MajSimaiParser
+namespace MajSimai
 {
     public partial class SimaiParser
     {

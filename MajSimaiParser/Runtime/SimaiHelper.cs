@@ -3,11 +3,11 @@ using System.Collections.Generic;
 using System.Linq;
 using System.Text;
 #nullable enable
-namespace MajSimaiParser
+namespace MajSimai
 {
     internal static class SimaiHelper
     {
-        internal static SimaiNote[] GetNotes(double timing,double bpm, string noteContent)
+        internal static SimaiNote[] GetNotes(double timing, double bpm, string noteContent)
         {
             if (string.IsNullOrEmpty(noteContent))
                 return Array.Empty<SimaiNote>();
@@ -50,7 +50,7 @@ namespace MajSimaiParser
             }
         }
 
-        internal static SimaiNote[] GetSameHeadSlide(double timing,double bpm, string content)
+        internal static SimaiNote[] GetSameHeadSlide(double timing, double bpm, string content)
         {
             var simaiNotes = new List<SimaiNote>();
             var noteContents = content.Split('*');
@@ -70,7 +70,7 @@ namespace MajSimaiParser
             return simaiNotes.ToArray();
         }
 
-        internal static SimaiNote GetSingleNote(double timing,double bpm, string noteText)
+        internal static SimaiNote GetSingleNote(double timing, double bpm, string noteText)
         {
             var simaiNote = new SimaiNote();
 

@@ -1,11 +1,10 @@
-﻿using MajSimaiParser.Exceptions;
-using System;
+﻿using System;
 using System.Collections.Generic;
 using System.IO;
 using System.Text;
 using System.Threading.Tasks;
 
-namespace MajSimaiParser
+namespace MajSimai
 {
     public partial class SimaiParser
     {
