@@ -3,9 +3,7 @@ Microsoft Visual Studio Solution File, Format Version 12.00
 # Visual Studio Version 17
 VisualStudioVersion = 17.7.34202.233
 MinimumVisualStudioVersion = 10.0.40219.1
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MajSimaiDecode", "MajSimaiDecode\MajSimaiDecode.csproj", "{2A9BFD69-9A22-4AF0-8925-11F982CD1BEA}"
-EndProject
-Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "TestProject1", "TestProject1\TestProject1.csproj", "{471BB3A9-D67D-42C8-ABB7-EA0E185C6CC1}"
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MajSimai", "MajSimai.csproj", "{2A9BFD69-9A22-4AF0-8925-11F982CD1BEA}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
