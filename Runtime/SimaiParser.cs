@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.IO;
+using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
 
@@ -30,12 +31,14 @@ namespace MajSimai
                 var level = metadata.Levels[i];
                 tasks[i] = ParseChartAsync(level, designer, fumen);
             }
-            await Task.WhenAll(tasks);
+            var allTask = Task.WhenAll(tasks);
+            while (!allTask.IsCompleted)
+                await Task.Yield();
             for(var i = 0; i < 7; i++)
             {
                 var task = tasks[i];
                 if (task.IsFaulted)
-                    throw task.Exception;
+                    charts[i] = new SimaiChart(metadata.Levels[i], metadata.Designers[i], Array.Empty<SimaiTimingPoint>());
                 else
                     charts[i] = task.Result;
             }
@@ -251,7 +254,7 @@ namespace MajSimai
 
         async Task<SimaiMetadata> ReadMetadataAsync(string content)
         {
-            return await Task.Run(() =>
+            return await Task.Run(async () =>
             {
                 var title = "";
                 var artist = "";
@@ -325,7 +328,14 @@ namespace MajSimai
                         if (designers[j] is null)
                             designers[j] = designer;
                     }
-                    return new SimaiMetadata(title, artist, first, designers,levels, fumens, commands.ToArray());
+                    return new SimaiMetadata(title, 
+                                             artist, 
+                                             first, 
+                                             designers,
+                                             levels, 
+                                             fumens, 
+                                             commands.ToArray(), 
+                                             await ComputeHashAsBase64StringAsync(Encoding.UTF8.GetBytes(content)));
                 }
                 catch (Exception e)
                 {
@@ -344,6 +354,20 @@ namespace MajSimai
                 if (noteText == mark)
                     return true;
             return false;
+        }
+        static async Task<byte[]> ComputeHashAsync(byte[] data)
+        {
+            using var md5 = MD5.Create();
+            return await Task.Run(() =>
+            {
+                return md5.ComputeHash(data);
+            });
+        }
+        static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
+        {
+            var hash = await ComputeHashAsync(data);
+
+            return Convert.ToBase64String(hash);
         }
     }
 }
