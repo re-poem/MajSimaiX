@@ -291,8 +291,14 @@ namespace MajSimai
 
                         }
                         else if (maidataTxt[i].StartsWith("&first="))
-                            first = float.Parse(GetValue(maidataTxt[i]));
+                        {
+                            if (!float.TryParse(GetValue(maidataTxt[i]), out first))
+                            {
+                                first = 0;
+                            }
+                        }
                         else if (maidataTxt[i].StartsWith("&lv_") || maidataTxt[i].StartsWith("&inote_"))
+                        {
                             for (var j = 1; j < 8 && i < maidataTxt.Length; j++)
                             {
                                 if (maidataTxt[i].StartsWith("&lv_" + j + "="))
@@ -313,6 +319,7 @@ namespace MajSimai
                                     fumens[j - 1] = TheNote;
                                 }
                             }
+                        }
                         else if (maidataTxt[i].StartsWith("&"))
                         {
                             if (!maidataTxt[i].Contains("="))
