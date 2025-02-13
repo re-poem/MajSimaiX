@@ -31,5 +31,30 @@ namespace MajSimai
             Fumens = fumens;
             Commands = commands;
         }
+        public static SimaiFile Empty(string title, string artist)
+        {
+            var emptyCharts = new SimaiChart[7]
+            {
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+            };
+            var emptyFumens = new string[7]
+            {
+                string.Empty, 
+                string.Empty,
+                string.Empty, 
+                string.Empty,
+                string.Empty, 
+                string.Empty, 
+                string.Empty
+            };
+
+            return new SimaiFile(string.Empty, title, artist, 0, emptyCharts, emptyFumens, Array.Empty<SimaiCommand>());
+        }
     }
 }
