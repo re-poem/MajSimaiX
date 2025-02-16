@@ -15,7 +15,7 @@ namespace MajSimai
         public SimaiNote[] Notes { get; set; } = Array.Empty<SimaiNote>();
         public bool IsEmpty => Notes.Length == 0;
 
-        public SimaiTimingPoint(double timing, SimaiNote[] notes, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
+        public SimaiTimingPoint(double timing, SimaiNote[]? notes, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
             float hspeed = 1f)
         {
             Timing = timing;

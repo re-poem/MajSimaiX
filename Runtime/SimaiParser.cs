@@ -75,7 +75,7 @@ namespace MajSimai
                     return new SimaiChart(level, designer, null);
                 }
                 var noteRawTiminglist = new List<SimaiRawTimingPoint>();
-                var timinglist = new List<SimaiTimingPoint>();
+                var commaTimingList = new List<SimaiTimingPoint>();
 
                 float bpm = 0;
                 var curHSpeed = 1f;
@@ -216,7 +216,7 @@ namespace MajSimai
                                 noteTemp = "";
                             }
 
-                            timinglist.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm));
+                            commaTimingList.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm));
 
 
                             time += 1d / (bpm / 60d) * 4d / beats;
@@ -225,13 +225,6 @@ namespace MajSimai
                         }
                     }
                     var noteTimingPoints = new SimaiTimingPoint[noteRawTiminglist.Count];
-                    //for (var i = 0; i < noteTiminglist.Count; i++)
-                    //{
-                    //    var note = noteTiminglist[i];
-                    //    var notes = new SimaiTimingPoint(note.time, note.rawTextPositionX, note.rawTextPositionY,
-                    //        note.notesContent, note.currentBpm, note.HSpeed);
-                    //    noteTiminglist[i].noteList = notes.getNotes();
-                    //}
                     for (int i = 0; i < noteRawTiminglist.Count; i++)
                     {
                         var rawTiming = noteRawTiminglist[i];
@@ -239,7 +232,7 @@ namespace MajSimai
                         noteTimingPoints[i] = timingPoint;
                     }
 
-                    return new SimaiChart(level, designer, noteTimingPoints);
+                    return new SimaiChart(level, designer, noteTimingPoints,commaTimingList.ToArray());
                 }
                 catch (InvalidValueException)
                 {
