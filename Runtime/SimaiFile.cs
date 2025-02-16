@@ -9,8 +9,8 @@ namespace MajSimai
         public string Title { get; set; }
         public string Artist { get; set; }
         public float Offset { get; set; }
-        public SimaiChart[] Levels { get; set; }
-        public string[] Fumens { get; set; }
+        public SimaiChart[] Charts { get; set; }
+        public string[] RawCharts { get; set; }
         public SimaiCommand[] Commands { get; }
 
         public SimaiFile(string path, string title, string artist, float offset, SimaiChart[] levels, string[] fumens, SimaiCommand[] commands)
@@ -27,8 +27,8 @@ namespace MajSimai
             Title = title;
             Artist = artist;
             Offset = offset;
-            Levels = levels;
-            Fumens = fumens;
+            Charts = levels;
+            RawCharts = fumens;
             Commands = commands;
         }
         public static SimaiFile Empty(string title, string artist)
