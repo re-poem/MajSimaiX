@@ -5,8 +5,8 @@ namespace MajSimai
 {
     public class SimaiChart
     {
-        public string Level { get; }
-        public string Designer { get; }
+        public string Level { get; set; }
+        public string Designer { get; set; }
         public SimaiTimingPoint[] NoteTimings { get; set; }
         public bool IsEmpty => NoteTimings.Length == 0;
         public static SimaiChart Empty { get; } = new SimaiChart(null, null, null);
