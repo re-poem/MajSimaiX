@@ -324,10 +324,7 @@ namespace MajSimai
                         }
                     }
                     for (var j = 0; j < 7; j++)
-                    {
-                        if (designers[j] is null)
-                            designers[j] = designer;
-                    }
+                        designers[j] ??= designer;
                     return new SimaiMetadata(title, 
                                              artist, 
                                              first, 
@@ -343,10 +340,7 @@ namespace MajSimai
                 }
             });
         }
-        string GetValue(string varline)
-        {
-            return varline.Substring(varline.IndexOf("=") + 1);
-        }
+        string GetValue(string varline) => varline.Substring(varline.IndexOf("=") + 1);
         static bool IsNote(char noteText)
         {
             var SlideMarks = "1234567890ABCDE"; ///ABCDE for touch
@@ -358,10 +352,7 @@ namespace MajSimai
         static async Task<byte[]> ComputeHashAsync(byte[] data)
         {
             using var md5 = MD5.Create();
-            return await Task.Run(() =>
-            {
-                return md5.ComputeHash(data);
-            });
+            return await Task.Run(() => md5.ComputeHash(data));
         }
         static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
         {
