@@ -208,7 +208,7 @@ namespace MajSimai
 
         internal static double GetTimeFromBeats(double bpm, string noteText)
         {
-            if (noteText.Count(c => { return c == '['; }) > 1)
+            if (noteText.Count(c => c == '[') > 1)
             {
                 // 组合slide 有多个时长
                 double wholeTime = 0;
