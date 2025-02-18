@@ -260,7 +260,7 @@ namespace MajSimai
                 List<SimaiCommand> commands = new List<SimaiCommand>();
                 try
                 {
-                    var maidataTxt = content.Split("\n", StringSplitOptions.RemoveEmptyEntries);
+                    var maidataTxt = content.Split("\n");
                     for (i = 0; i < maidataTxt.Length; i++)
                     {
                         if (maidataTxt[i].StartsWith("&title="))
@@ -373,19 +373,15 @@ namespace MajSimai
             for (int i = 0; i < 7; i++)
             {
                 var chart = simaiFile.Charts[i];
-                if (chart is null)
+                if (chart is null)  continue;
+                if (!string.IsNullOrEmpty(chart.Designer))
                 {
-                    sb.AppendLine($"&des_{i + 1}=");
-                    sb.AppendLine($"&lv_{i + 1}=");
-                }
-                else
-                {
+                    finalDesigner = chart.Designer;
                     sb.AppendLine($"&des_{i + 1}={chart.Designer}");
+                }
+                if (!string.IsNullOrEmpty(chart.Level))
+                {
                     sb.AppendLine($"&lv_{i + 1}={chart.Level}");
-                    if (!string.IsNullOrEmpty(chart.Designer))
-                    {
-                        finalDesigner = chart.Designer;
-                    }
                 }
             }
             sb.AppendLine($"&des={finalDesigner}");
