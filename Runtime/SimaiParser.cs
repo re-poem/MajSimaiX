@@ -277,7 +277,7 @@ namespace MajSimai
                             {
                                 for (var j = 0; j < 7; j++)
                                 {
-                                    if (maidataTxt[i].StartsWith($"&des_{j}="))
+                                    if (maidataTxt[i].StartsWith($"&des_{j + 1}="))
                                         designers[j] = GetValue(maidataTxt[i]);
                                 }
                             }
@@ -340,7 +340,7 @@ namespace MajSimai
                 }
             });
         }
-        private string GetValue(string varline) => varline.Substring(varline.IndexOf("=") + 1);
+        private string GetValue(string varline) => varline.Substring(varline.IndexOf("=") + 1).Trim();
         private static bool IsNote(char noteText)
         {
             var SlideMarks = "1234567890ABCDE"; ///ABCDE for touch
