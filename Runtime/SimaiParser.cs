@@ -392,7 +392,7 @@ namespace MajSimai
             for (int i = 0; i < 7; i++)
             {
                 var chart = simaiFile.RawCharts[i];
-                if (chart is null) continue;
+                if (string.IsNullOrEmpty(chart)) continue;
                 sb.AppendLine($"&inote_{i + 1}={chart}");
             }
             File.WriteAllText(path, sb.ToString());
