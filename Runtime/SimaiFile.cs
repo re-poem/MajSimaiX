@@ -56,34 +56,5 @@ namespace MajSimai
 
             return new SimaiFile(string.Empty, title, artist, 0, emptyCharts, emptyFumens, Array.Empty<SimaiCommand>());
         }
-        public string ExportMetadata()
-        {
-            var sb = new StringBuilder();
-            var finalDesigner = string.Empty;
-
-            sb.AppendLine($"&title={Title}");
-            sb.AppendLine($"&artist={Artist}");
-            sb.AppendLine($"&first={Offset}");
-            for (int i = 0; i < 7; i++)
-            {
-                var chart = Charts[i];
-                if(chart is null)
-                {
-                    sb.AppendLine($"&des_{i}=");
-                    sb.AppendLine($"&lv_{i}=");
-                }
-                else
-                {
-                    sb.AppendLine($"&des_{i}={chart.Designer}");
-                    sb.AppendLine($"&lv_{i}={chart.Level}");
-                    if (!string.IsNullOrEmpty(chart.Designer))
-                    {
-                        finalDesigner = chart.Designer;
-                    }
-                }
-            }
-            sb.AppendLine($"&des={finalDesigner}");
-            return sb.ToString();
-        }
     }
 }

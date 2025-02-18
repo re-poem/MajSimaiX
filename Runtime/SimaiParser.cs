@@ -245,7 +245,7 @@ namespace MajSimai
             });
         }
 
-        async Task<SimaiMetadata> ReadMetadataAsync(string content)
+        private async Task<SimaiMetadata> ReadMetadataAsync(string content)
         {
             return await Task.Run(async () =>
             {
@@ -340,8 +340,8 @@ namespace MajSimai
                 }
             });
         }
-        string GetValue(string varline) => varline.Substring(varline.IndexOf("=") + 1);
-        static bool IsNote(char noteText)
+        private string GetValue(string varline) => varline.Substring(varline.IndexOf("=") + 1);
+        private static bool IsNote(char noteText)
         {
             var SlideMarks = "1234567890ABCDE"; ///ABCDE for touch
             foreach (var mark in SlideMarks)
@@ -349,16 +349,58 @@ namespace MajSimai
                     return true;
             return false;
         }
-        static async Task<byte[]> ComputeHashAsync(byte[] data)
+        private static async Task<byte[]> ComputeHashAsync(byte[] data)
         {
             using var md5 = MD5.Create();
             return await Task.Run(() => md5.ComputeHash(data));
         }
-        static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
+        private static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
         {
             var hash = await ComputeHashAsync(data);
 
             return Convert.ToBase64String(hash);
+        }
+
+        //Note: this method only deparse RawChart
+        public void DeParse(SimaiFile simaiFile,string path)
+        {
+            var sb = new StringBuilder();
+            var finalDesigner = string.Empty;
+
+            sb.AppendLine($"&title={simaiFile.Title}");
+            sb.AppendLine($"&artist={simaiFile.Artist}");
+            sb.AppendLine($"&first={simaiFile.Offset}");
+            for (int i = 0; i < 7; i++)
+            {
+                var chart = simaiFile.Charts[i];
+                if (chart is null)
+                {
+                    sb.AppendLine($"&des_{i + 1}=");
+                    sb.AppendLine($"&lv_{i + 1}=");
+                }
+                else
+                {
+                    sb.AppendLine($"&des_{i + 1}={chart.Designer}");
+                    sb.AppendLine($"&lv_{i + 1}={chart.Level}");
+                    if (!string.IsNullOrEmpty(chart.Designer))
+                    {
+                        finalDesigner = chart.Designer;
+                    }
+                }
+            }
+            sb.AppendLine($"&des={finalDesigner}");
+            foreach (var command in simaiFile.Commands)
+            {
+                sb.AppendLine($"&{command.Prefix}={command.Value}");
+            }
+            for (int i = 0; i < 7; i++)
+            {
+                var chart = simaiFile.RawCharts[i];
+                if (chart is null) continue;
+                sb.AppendLine($"&inote_{i + 1}={chart}");
+            }
+            File.WriteAllText(path, sb.ToString());
+            return;
         }
     }
 }

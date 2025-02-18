@@ -5,7 +5,7 @@ using System.Text;
 #nullable enable
 namespace MajSimai
 {
-    internal static class SimaiHelper
+    internal static class SimaiNoteParser
     {
         internal static SimaiNote[] GetNotes(double timing, double bpm, string noteContent)
         {

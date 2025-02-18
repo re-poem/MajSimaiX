@@ -29,7 +29,7 @@ namespace MajSimai
         {
             return await Task.Run(() =>
             {
-                var notes = SimaiHelper.GetNotes(Timing, Bpm, RawContent);
+                var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
 
                 return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
             });
