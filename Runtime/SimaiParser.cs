@@ -309,7 +309,7 @@ namespace MajSimai
                                         TheNote += maidataTxt[i] + "\n";
                                     }
 
-                                    fumens[j - 1] = TheNote;
+                                    fumens[j - 1] = TheNote.Trim();
                                 }
                             }
                         }
