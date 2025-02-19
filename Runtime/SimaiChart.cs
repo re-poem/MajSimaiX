@@ -10,13 +10,20 @@ namespace MajSimai
         public SimaiTimingPoint[] NoteTimings { get; set; }
         public SimaiTimingPoint[] CommaTimings { get; set; }
         public bool IsEmpty => NoteTimings.Length == 0;
-        public static SimaiChart Empty { get; } = new SimaiChart(null, string.Empty, null);
         public SimaiChart(string? level, string? designer, SimaiTimingPoint[]? noteTimings, SimaiTimingPoint[]? commaTimings = null)
         {
             Level = level ?? string.Empty;
             Designer = designer ?? "Undefined";
             NoteTimings = noteTimings ?? Array.Empty<SimaiTimingPoint>();
             CommaTimings = commaTimings ?? Array.Empty<SimaiTimingPoint>();
+        }
+
+        public SimaiChart()
+        {
+            Level = "";
+            Designer = "";
+            NoteTimings = new SimaiTimingPoint[0];
+            CommaTimings = new SimaiTimingPoint[0];
         }
     }
 }

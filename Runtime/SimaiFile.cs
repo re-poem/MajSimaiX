@@ -35,13 +35,13 @@ namespace MajSimai
         {
             var emptyCharts = new SimaiChart[7]
             {
-                SimaiChart.Empty,
-                SimaiChart.Empty,
-                SimaiChart.Empty,
-                SimaiChart.Empty,
-                SimaiChart.Empty,
-                SimaiChart.Empty,
-                SimaiChart.Empty,
+                new SimaiChart(),
+                new SimaiChart(),
+                new SimaiChart(),
+                new SimaiChart(),
+                new SimaiChart(),
+                new SimaiChart(),
+                new SimaiChart(),
             };
             var emptyFumens = new string[7]
             {
