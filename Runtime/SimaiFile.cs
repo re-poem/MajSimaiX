@@ -11,7 +11,7 @@ namespace MajSimai
         public float Offset { get; set; }
         public SimaiChart[] Charts { get; set; }
         public string[] RawCharts { get; set; }
-        public SimaiCommand[] Commands { get; }
+        public SimaiCommand[] Commands { get; set; }
 
         public SimaiFile(string path, string title, string artist, float offset, SimaiChart[] levels, string[] fumens, SimaiCommand[] commands)
         {
