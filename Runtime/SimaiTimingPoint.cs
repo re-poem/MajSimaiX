@@ -12,15 +12,17 @@ namespace MajSimai
         public string RawContent { get; } = string.Empty;
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
+        public int RawTextPosition { get; }
         public SimaiNote[] Notes { get; set; } = Array.Empty<SimaiNote>();
         public bool IsEmpty => Notes.Length == 0;
 
         public SimaiTimingPoint(double timing, SimaiNote[]? notes, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
-            float hspeed = 1f)
+            float hspeed = 1f, int rawTextPosition = 0)
         {
             Timing = timing;
             RawTextPositionX = textPosX;
             RawTextPositionY = textPosY;
+            RawTextPosition = rawTextPosition;
             RawContent = rawContent.Replace("\n", "").Replace(" ", "");
             Bpm = bpm;
             HSpeed = hspeed;

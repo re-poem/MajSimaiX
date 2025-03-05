@@ -13,7 +13,7 @@ namespace MajSimai
         public SimaiChart(string? level, string? designer, SimaiTimingPoint[]? noteTimings, SimaiTimingPoint[]? commaTimings = null)
         {
             Level = level ?? string.Empty;
-            Designer = designer ?? "Undefined";
+            Designer = designer ?? string.Empty;
             NoteTimings = noteTimings ?? Array.Empty<SimaiTimingPoint>();
             CommaTimings = commaTimings ?? Array.Empty<SimaiTimingPoint>();
         }

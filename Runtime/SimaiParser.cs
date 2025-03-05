@@ -216,7 +216,7 @@ namespace MajSimai
                                 noteTemp = "";
                             }
 
-                            commaTimingList.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm));
+                            commaTimingList.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm, 1,i));
 
 
                             time += 1d / (bpm / 60d) * 4d / beats;
