@@ -184,7 +184,7 @@ namespace MajSimai
                 noteText = noteText.Replace("$", "");
             }
 
-            simaiNote.RawContent = noteText ?? string.Empty;
+            simaiNote.RawContent = (noteText ?? string.Empty).Trim();
             return simaiNote;
         }
 
