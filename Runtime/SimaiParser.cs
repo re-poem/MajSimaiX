@@ -131,7 +131,7 @@ namespace MajSimai
 
                             if (!float.TryParse(bpm_s, out bpm))
                             {
-                                throw new InvalidValueException(Ycount, bpm_s, "BPM value must be a floating point number");
+                                throw new InvalidSimaiMarkupException(Ycount, Xcount, bpm_s, "BPM value must be a number");
                             }
                             //Console.WriteLine("BPM" + bpm);
                             continue;
@@ -154,7 +154,7 @@ namespace MajSimai
 
                             if (!float.TryParse(beats_s, out beats))
                             {
-                                throw new InvalidValueException(Ycount, beats_s, "Beats value must be a floating point number");
+                                throw new InvalidSimaiMarkupException(Ycount, Xcount, beats_s, "Beats value must be a number");
                             }
                             //Console.WriteLine("BEAT" + beats);
                             continue;
@@ -181,7 +181,7 @@ namespace MajSimai
 
                             if (!float.TryParse(hs_s, out curHSpeed))
                             {
-                                throw new InvalidValueException(Ycount, hs_s, "HSpeed value must be a floating point number");
+                                throw new InvalidSimaiMarkupException(Ycount,Xcount, hs_s, "HSpeed value must be a number");
                             }
                             //Console.WriteLine("HS" + curHSpeed);
                             continue;
@@ -234,7 +234,7 @@ namespace MajSimai
 
                     return new SimaiChart(level, designer, noteTimingPoints,commaTimingList.ToArray());
                 }
-                catch (InvalidValueException)
+                catch (InvalidSimaiMarkupException)
                 {
                     throw;
                 }
@@ -316,7 +316,7 @@ namespace MajSimai
                         else if (maidataTxt[i].StartsWith("&"))
                         {
                             if (!maidataTxt[i].Contains("="))
-                                throw new InvalidSimaiMarkupException(i + 1, maidataTxt[i]);
+                                throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt[i]);
                             var a = maidataTxt[i].Split("=");
                             var prefix = a[0][1..];
                             var value = a[1];
@@ -334,9 +334,13 @@ namespace MajSimai
                                              commands.ToArray(), 
                                              await ComputeHashAsBase64StringAsync(Encoding.UTF8.GetBytes(content)));
                 }
+                catch(InvalidSimaiMarkupException)
+                {
+                    throw;
+                }
                 catch (Exception e)
                 {
-                    throw new InvalidSimaiMarkupException(i + 1, "", "在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
+                    throw new InvalidSimaiMarkupException(i + 1, 0, "在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
                 }
             });
         }
