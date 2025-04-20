@@ -115,16 +115,18 @@ namespace MajSimai
                 simaiNote.Type = SimaiNoteType.Slide;
                 simaiNote.SlideTime = GetTimeFromBeats(bpm, noteText);
                 var timeStarWait = GetStarWaitTime(bpm, noteText);
-                simaiNote.SlideStartTime = timing + timeStarWait;
+                
                 if (noteText.Contains('!'))
                 {
                     simaiNote.IsSlideNoHead = true;
                     noteText = noteText.Replace("!", "");
+                    simaiNote.SlideStartTime = timing;
                 }
                 else if (noteText.Contains('?'))
                 {
                     simaiNote.IsSlideNoHead = true;
                     noteText = noteText.Replace("?", "");
+                    simaiNote.SlideStartTime = timing + timeStarWait;
                 }
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
             }
@@ -134,30 +136,9 @@ namespace MajSimai
             {
                 if (simaiNote.Type == SimaiNoteType.Slide)
                 {
-                    // 如果是Slide 则要检查这个b到底是星星头的还是Slide本体的
-
-                    // !!! **SHIT CODE HERE** !!!
-                    var startIndex = 0;
-                    while ((startIndex = noteText.IndexOf('b', startIndex)) != -1)
-                    {
-                        if (startIndex < noteText.Length - 1)
-                        {
-                            // 如果b不是最后一个字符 我们就检查b之后一个字符是不是`[`符号：如果是 那么就是break slide
-                            if (noteText[startIndex + 1] == '[')
-                                simaiNote.IsSlideBreak = true;
-                            else
-                                // 否则 那么不管这个break出现在slide的哪一个地方 我们都认为他是星星头的break
-                                // SHIT CODE!
-                                simaiNote.IsBreak = true;
-                        }
-                        else
-                        {
-                            // 如果b符号是整个文本的最后一个字符 那么也是break slide（Simai语法）
-                            simaiNote.IsSlideBreak = true;
-                        }
-
-                        startIndex++;
-                    }
+                    var ret = CheckHeadOrSlide(noteText, 'b');
+                    simaiNote.IsBreak = ret.Item1;
+                    simaiNote.IsSlideBreak = ret.Item2;
                 }
                 else
                 {
@@ -184,8 +165,57 @@ namespace MajSimai
                 noteText = noteText.Replace("$", "");
             }
 
+            if(noteText.Contains('m'))
+            {
+                if(simaiNote.Type == SimaiNoteType.Slide)
+                {
+                    var ret = CheckHeadOrSlide(noteText, 'm');
+                    simaiNote.IsMine = ret.Item1;
+                    simaiNote.IsMineSlide = ret.Item2;
+                }
+                else
+                {
+                    // 除此之外的Mine就无所谓了
+                    simaiNote.IsMine = true;
+                }
+                noteText = noteText.Replace("m", "");
+            }
+
             simaiNote.RawContent = (noteText ?? string.Empty).Trim();
             return simaiNote;
+        }
+
+        //1: 是星星头的break
+        //2: 是slide本体的break
+        private static (bool,bool) CheckHeadOrSlide(string noteText, char detectChar)
+        {
+            // 如果是Slide 则要检查这个b到底是星星头的还是Slide本体的
+
+            // !!! **SHIT CODE HERE** !!!
+            bool isBreak = false;
+            bool isBreakSlide = false;
+            var startIndex = 0;
+            while ((startIndex = noteText.IndexOf(detectChar, startIndex)) != -1)
+            {
+                if (startIndex < noteText.Length - 1)
+                {
+                    // 如果b不是最后一个字符 我们就检查b之后一个字符是不是`[`符号：如果是 那么就是break slide
+                    if (noteText[startIndex + 1] == '[')
+                        isBreakSlide = true;
+                    else
+                        // 否则 那么不管这个break出现在slide的哪一个地方 我们都认为他是星星头的break
+                        // SHIT CODE!
+                        isBreak = true;
+                }
+                else
+                {
+                    // 如果b符号是整个文本的最后一个字符 那么也是break slide（Simai语法）
+                    isBreakSlide = true;
+                }
+
+                startIndex++;
+            }
+            return (isBreak,isBreakSlide);
         }
 
         internal static bool IsSlideNote(string noteText)

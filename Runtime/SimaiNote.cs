@@ -13,6 +13,8 @@
         public bool IsHanabi { get; set; }
         public bool IsSlideBreak { get; set; }
         public bool IsSlideNoHead { get; set; }
+        public bool IsMine { get; set; } //炸弹音符
+        public bool IsMineSlide { get; set; }
 
         public string RawContent { get; set; } //used for star explain
 
