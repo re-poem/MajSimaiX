@@ -5,6 +5,7 @@ using System.Text;
 #nullable enable
 namespace MajSimai
 {
+    using rString = ReadOnlySpan<char>;
     internal static class SimaiNoteParser
     {
         internal static SimaiNote[] GetNotes(double timing, double bpm, string noteContent)
@@ -218,7 +219,7 @@ namespace MajSimai
             return (isBreak,isBreakSlide);
         }
 
-        internal static bool IsSlideNote(ReadOnlySpan<char> noteText)
+        internal static bool IsSlideNote(rString noteText)
         {
             const string SLIDE_MARKS = "-^v<>Vpqszw";
             foreach (var mark in SLIDE_MARKS)
@@ -231,7 +232,7 @@ namespace MajSimai
             return false;
         }
 
-        internal static bool IsTouchNote(ReadOnlySpan<char> noteText)
+        internal static bool IsTouchNote(rString noteText)
         {
             const string TOUCH_MARKS = "ABCDE";
             foreach (var mark in TOUCH_MARKS)
@@ -349,7 +350,7 @@ namespace MajSimai
         }
         static class NoteHelper
         {
-            internal static bool TryGetStarWaitTime(double bpm, ReadOnlySpan<char> noteText,out double time)
+            internal static bool TryGetStarWaitTime(double bpm, rString noteText,out double time)
             {
                 time = default;
 
