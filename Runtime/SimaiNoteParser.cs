@@ -337,6 +337,45 @@ namespace MajSimai
             }
 
             return 1d / (bpm / 60d);
+            
+        }
+        static class NoteHelper
+        {
+            internal static bool TryGetStarWaitTime(double bpm, ReadOnlySpan<char> noteText,out double time)
+            {
+                time = default;
+
+                var startIndex = noteText.IndexOf('[');
+                var overIndex = noteText.IndexOf(']');
+
+                if(startIndex == -1 || overIndex == -1)
+                {
+                    return false;
+                }
+
+                var slideParamStr = noteText.Slice(startIndex + 1, overIndex - startIndex - 1);
+                Span<Range> ranges = stackalloc Range[3];
+                var tagCount = slideParamStr.Split(ranges, '#', StringSplitOptions.None);
+
+                // 160#8:3 or 160#2s
+                if (tagCount == 1)
+                {
+                    var timeStr = slideParamStr[ranges[0]];
+                    if (timeStr.IsEmpty || !double.TryParse(timeStr, out bpm))
+                    {
+                        return false;
+                    }
+                }
+                else if (tagCount == 2 || tagCount == 3)// 3s##1.5s or 3s##8:3 or 3s##160#8:3
+                {
+                    var timeStr = slideParamStr[ranges[0]];
+
+                    return !timeStr.IsEmpty && double.TryParse(timeStr, out time);
+                }
+
+                time = 1d / (bpm / 60d);
+                return true;
+            }
         }
     }
 }
