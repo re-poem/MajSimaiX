@@ -1,11 +1,13 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.CompilerServices;
 using System.Text;
 
 namespace MajSimai
 {
     internal static class SpanExtensions
     {
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static int Split(this ReadOnlySpan<char> source, Span<Range> dest, char separator, StringSplitOptions options = StringSplitOptions.None)
         {
             var keepEmptyEntries = (options & StringSplitOptions.RemoveEmptyEntries) == 0;
@@ -50,5 +52,32 @@ namespace MajSimai
             }
             return destIndex;
         }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Contains<T>(this ReadOnlySpan<T> source, T value) where T: IEquatable<T>
+        {
+            if(source.IsEmpty)
+            {
+                return false;
+            }
+            for (var i = 0; i < source.Length; i++)
+            {
+                if (source[i].Equals(value))
+                {
+                    return true;
+                }
+            }
+            return false;
+        }
+        /// <summary>
+        /// Determines whether the specified value appears at the start of the span.
+        /// </summary>
+        /// <param name="span">The span to search.</param>
+        /// <param name="value">The value to compare.</param>
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool StartsWith<T>(this ReadOnlySpan<T> span, T value) where T : IEquatable<T>?
+        {
+            return span.Length != 0 && (span[0]?.Equals(value) ?? (object?)value is null);
+        }
+            
     }
 }

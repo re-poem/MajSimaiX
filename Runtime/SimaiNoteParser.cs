@@ -218,21 +218,29 @@ namespace MajSimai
             return (isBreak,isBreakSlide);
         }
 
-        internal static bool IsSlideNote(string noteText)
+        internal static bool IsSlideNote(ReadOnlySpan<char> noteText)
         {
-            var SlideMarks = "-^v<>Vpqszw";
-            foreach (var mark in SlideMarks)
+            const string SLIDE_MARKS = "-^v<>Vpqszw";
+            foreach (var mark in SLIDE_MARKS)
+            {
                 if (noteText.Contains(mark))
+                {
                     return true;
+                }
+            }
             return false;
         }
 
-        internal static bool IsTouchNote(string noteText)
+        internal static bool IsTouchNote(ReadOnlySpan<char> noteText)
         {
-            var SlideMarks = "ABCDE";
-            foreach (var mark in SlideMarks)
-                if (noteText.StartsWith(mark.ToString()))
+            const string TOUCH_MARKS = "ABCDE";
+            foreach (var mark in TOUCH_MARKS)
+            {
+                if (noteText.StartsWith(mark))
+                {
                     return true;
+                }
+            }
             return false;
         }
 
