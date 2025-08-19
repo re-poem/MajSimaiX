@@ -4,11 +4,12 @@ using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
 using System.Linq;
+using System.Runtime.CompilerServices;
 using System.Text;
 #nullable enable
 namespace MajSimai
 {
-    using rString = ReadOnlySpan<char>;
+    using zString = ReadOnlySpan<char>;
     internal static class SimaiNoteParser
     {
         internal static SimaiNote[] GetNotes(double timing, double bpm, string noteContent)
@@ -87,7 +88,7 @@ namespace MajSimai
             }
         }
 
-        internal static void GetSameHeadSlide(double timing, double bpm, rString content, IList<SimaiNote> buffer)
+        internal static void GetSameHeadSlide(double timing, double bpm, zString content, IList<SimaiNote> buffer)
         {
             Span<Range> ranges = stackalloc Range[content.Count('*') + 1];
             _ = content.Split(ranges, '*', StringSplitOptions.RemoveEmptyEntries);
@@ -133,14 +134,14 @@ namespace MajSimai
             }
         }
 
-        internal static bool TryGetSingleNote(double timing, double bpm, rString noteText,[NotNullWhen(true)] out SimaiNote? outSimaiNote)
+        internal static bool TryGetSingleNote(double timing, double bpm, zString noteText,[NotNullWhen(true)] out SimaiNote? outSimaiNote)
         {
             outSimaiNote = default;
             Span<char> noteTextCopy = stackalloc char[noteText.Length];
             noteText.CopyTo(noteTextCopy);
             var simaiNote = new SimaiNote();
 
-            if (IsTouchNote(noteTextCopy))
+            if (NoteHelper.IsTouchNote(noteTextCopy))
             {
                 simaiNote.TouchArea = noteTextCopy[0];
                 if (simaiNote.TouchArea != 'C')
@@ -184,7 +185,7 @@ namespace MajSimai
             //hold
             if (noteTextCopy.Contains('h'))
             {
-                if (IsTouchNote(noteTextCopy))
+                if (NoteHelper.IsTouchNote(noteTextCopy))
                 {
                     simaiNote.Type = SimaiNoteType.TouchHold;
                     if(NoteHelper.TryGetHoldTimeFromBeats(bpm, noteTextCopy, out var holdTime))
@@ -220,7 +221,7 @@ namespace MajSimai
             }
 
             //slide
-            if (IsSlideNote(noteTextCopy))
+            if (NoteHelper.IsSlideNote(noteTextCopy))
             {
                 simaiNote.Type = SimaiNoteType.Slide;
                 simaiNote.SlideTime = GetTimeFromBeats(bpm, noteTextCopy);
@@ -249,9 +250,7 @@ namespace MajSimai
             {
                 if (simaiNote.Type == SimaiNoteType.Slide)
                 {
-                    var ret = CheckHeadOrSlide(noteTextCopy, 'b');
-                    simaiNote.IsBreak = ret.Item1;
-                    simaiNote.IsSlideBreak = ret.Item2;
+                    (simaiNote.IsBreak, simaiNote.IsSlideBreak) = NoteHelper.CheckHeadOrSlide(noteTextCopy, 'b');
                 }
                 else
                 {
@@ -284,7 +283,7 @@ namespace MajSimai
             {
                 if(simaiNote.Type == SimaiNoteType.Slide)
                 {
-                    var ret = CheckHeadOrSlide(noteTextCopy, 'm');
+                    var ret = NoteHelper.CheckHeadOrSlide(noteTextCopy, 'm');
                     simaiNote.IsMine = ret.Item1;
                     simaiNote.IsMineSlide = ret.Item2;
                 }
@@ -301,69 +300,7 @@ namespace MajSimai
             return true;
         }
 
-        //1: 是星星头的break
-        //2: 是slide本体的break
-        private static (bool,bool) CheckHeadOrSlide(rString noteText, char detectChar)
-        {
-            // 如果是Slide 则要检查这个b到底是星星头的还是Slide本体的
-
-            // !!! **SHIT CODE HERE** !!!
-            bool isBreak = false;
-            bool isBreakSlide = false;
-            var startIndex = 0;
-            while ((startIndex = noteText.Slice(startIndex).IndexOf(detectChar)) != -1)
-            {
-                if (startIndex < noteText.Length - 1)
-                {
-                    // 如果b不是最后一个字符 我们就检查b之后一个字符是不是`[`符号：如果是 那么就是break slide
-                    // startIndex + 1 < noteText.Length 防越界
-                    if (startIndex + 1 < noteText.Length && noteText[startIndex + 1] == '[')
-                    {
-                        isBreakSlide = true;
-                    }
-                    else
-                    {
-                        // 否则 那么不管这个break出现在slide的哪一个地方 我们都认为他是星星头的break
-                        // SHIT CODE!
-                        isBreak = true;
-                    }
-                }
-                else
-                {
-                    // 如果b符号是整个文本的最后一个字符 那么也是break slide（Simai语法）
-                    isBreakSlide = true;
-                }
-
-                startIndex++;
-            }
-            return (isBreak,isBreakSlide);
-        }
-
-        internal static bool IsSlideNote(rString noteText)
-        {
-            const string SLIDE_MARKS = "-^v<>Vpqszw";
-            foreach (var mark in SLIDE_MARKS)
-            {
-                if (noteText.Contains(mark))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
-
-        internal static bool IsTouchNote(rString noteText)
-        {
-            const string TOUCH_MARKS = "ABCDE";
-            foreach (var mark in TOUCH_MARKS)
-            {
-                if (noteText.StartsWith(mark))
-                {
-                    return true;
-                }
-            }
-            return false;
-        }
+        
 
         internal static double GetTimeFromBeats(double bpm, string noteText)
         {
@@ -446,31 +383,80 @@ namespace MajSimai
                 return timeOneBeat * 4d / divide * count;
             }
         }
-
-        internal static double GetStarWaitTime(double bpm, string noteText)
-        {
-            var startIndex = noteText.IndexOf('[');
-            var overIndex = noteText.IndexOf(']');
-            var innerString = noteText.Substring(startIndex + 1, overIndex - startIndex - 1);
-
-            if (innerString.Count(o => o == '#') == 1)
-            {
-                var times = innerString.Split('#');
-                bpm = double.Parse(times[0]);
-            }
-
-            if (innerString.Count(o => o == '#') == 2)
-            {
-                var times = innerString.Split('#');
-                return double.Parse(times[0]);
-            }
-
-            return 1d / (bpm / 60d);
-            
-        }
         static class NoteHelper
         {
-            public static bool TryGetStarWaitTime(double bpm, rString noteText,out double time)
+            //1: 是星星头的break
+            //2: 是slide本体的break
+            public static (bool isBreak, bool isBreakSlide) CheckHeadOrSlide(zString noteText, char detectChar)
+            {
+                // 如果是Slide 则要检查这个b到底是星星头的还是Slide本体的
+
+                // !!! **SHIT CODE HERE** !!!
+                bool isBreak = false;
+                bool isBreakSlide = false;
+                var startIndex = 0;
+                while ((startIndex = noteText.Slice(startIndex).IndexOf(detectChar)) != -1)
+                {
+                    if (startIndex < noteText.Length - 1)
+                    {
+                        // 如果b不是最后一个字符 我们就检查b之后一个字符是不是`[`符号：如果是 那么就是break slide
+                        // startIndex + 1 < noteText.Length 防越界
+                        if (startIndex + 1 < noteText.Length && noteText[startIndex + 1] == '[')
+                        {
+                            isBreakSlide = true;
+                        }
+                        else
+                        {
+                            // 否则 那么不管这个break出现在slide的哪一个地方 我们都认为他是星星头的break
+                            // SHIT CODE!
+                            isBreak = true;
+                        }
+                    }
+                    else
+                    {
+                        // 如果b符号是整个文本的最后一个字符 那么也是break slide（Simai语法）
+                        isBreakSlide = true;
+                    }
+
+                    startIndex++;
+                }
+                return (isBreak, isBreakSlide);
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static bool IsSlideNote(zString noteText)
+            {
+                const string SLIDE_MARKS = "-^v<>Vpqszw";
+                foreach (var mark in SLIDE_MARKS)
+                {
+                    if (noteText.Contains(mark))
+                    {
+                        return true;
+                    }
+                }
+                return false;
+            }
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            public static bool IsTouchNote(zString noteText)
+            {
+                if(noteText.IsEmpty)
+                {
+                    return false;
+                }
+                //const string TOUCH_MARKS = "ABCDE";
+
+                var c = noteText[0];
+
+                return c >= 'A' && c <= 'E';
+                //foreach (var mark in TOUCH_MARKS)
+                //{
+                //    if (noteText.StartsWith(mark))
+                //    {
+                //        return true;
+                //    }
+                //}
+                //return false;
+            }
+            public static bool TryGetStarWaitTime(double bpm, zString noteText,out double time)
             {
                 time = default;
 
@@ -505,7 +491,7 @@ namespace MajSimai
                 time = 1d / (bpm / 60d);
                 return true;
             }
-            public static bool TryGetHoldTimeFromBeats(double bpm, rString noteText, out double time)
+            public static bool TryGetHoldTimeFromBeats(double bpm, zString noteText, out double time)
             {
                 time = default;
                 var startIndex = noteText.IndexOf('[');
@@ -554,7 +540,8 @@ namespace MajSimai
             /// <param name="noteText"></param>
             /// <param name="time"></param>
             /// <returns></returns>
-            static bool TryGetTimeFromRatio(double bpm, rString noteText, out double time)
+            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            static bool TryGetTimeFromRatio(double bpm, zString noteText, out double time)
             {
                 time = default;
                 var timeOneBeat = 1d / (bpm / 60d);
