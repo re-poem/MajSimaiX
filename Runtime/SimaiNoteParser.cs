@@ -224,12 +224,12 @@ namespace MajSimai
             if (NoteHelper.IsSlideNote(noteTextCopy))
             {
                 simaiNote.Type = SimaiNoteType.Slide;
-                simaiNote.SlideTime = GetTimeFromBeats(bpm, noteTextCopy);
-                if(!NoteHelper.TryGetStarWaitTime(bpm, noteTextCopy, out var timeStarWait))
+                if(!NoteHelper.TryGetSlideParams(bpm, noteTextCopy, out var slideParams))
                 {
                     return false;
                 }
-                
+                var (slideWaitTime, slideTime) = slideParams;
+                simaiNote.SlideTime = slideTime;
                 if (noteTextCopy.Contains('!'))
                 {
                     simaiNote.IsSlideNoHead = true;
@@ -240,7 +240,7 @@ namespace MajSimai
                 {
                     simaiNote.IsSlideNoHead = true;
                     noteTextCopy = noteTextCopy.RemoveAll('?');
-                    simaiNote.SlideStartTime = timing + timeStarWait;
+                    simaiNote.SlideStartTime = timing + slideWaitTime;
                 }
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
             }
@@ -385,6 +385,118 @@ namespace MajSimai
         }
         static class NoteHelper
         {
+            public static bool TryGetSlideParams(double bpm, zString noteText, out (double slideWaitTime, double slideTime) outParams)
+            {
+                outParams = (default, default);
+                // 组合slide 有多个时长
+                var slideWaitTime = 0d;
+                var slideTime = 0d;
+                var customBpm = (double?)null;
+                var nextStartIndex = 0;
+                Span<Range> ranges = stackalloc Range[3];
+                while ((nextStartIndex = noteText[nextStartIndex..].IndexOf('[')) != -1)
+                {
+                    var startIndex = nextStartIndex;
+                    var overIndex = noteText[startIndex..].IndexOf(']');
+                    if(overIndex == -1)
+                    {
+                        return false;
+                    }
+                    nextStartIndex = overIndex + 1;
+                    var slideParamsBody = noteText.Slice(startIndex + 1, overIndex - startIndex - 1);
+                    var tagCount = slideParamsBody.Split(ranges, '#', StringSplitOptions.None);
+
+                    switch(tagCount)
+                    {
+                        case 1: // [8:1]
+                            {
+                                if (!TryGetTimeFromRatio(bpm, slideParamsBody, out var time))
+                                {
+                                    return false;
+                                }
+                                slideTime += time;
+                            }
+                            break;
+                        case 2: // [160#8:3] or [160#2s] or [#8:1] or [8:1#]
+                            {
+                                var param1 = slideParamsBody[ranges[0]];
+                                var param2 = slideParamsBody[ranges[1]];
+                                var isAnyParamEmpty = param1.IsEmpty || param2.IsEmpty;
+                                if (isAnyParamEmpty || !double.TryParse(param1, out var cBpm))
+                                {
+                                    return false;
+                                }
+                                if(double.TryParse(param2, out var time)) // [160#2s]
+                                {
+                                    slideTime += time;
+                                }
+                                else if(TryGetTimeFromRatio(cBpm, param2, out time)) // [160#8:3]
+                                {
+                                    slideTime += time;
+                                }
+                                else // undefined behavior
+                                {
+                                    return false;
+                                }
+                                customBpm ??= cBpm;
+                            }
+                            break;
+                        case 3: // [3s##1.5s] or [3s##8:3]
+                            {
+                                var param1 = slideParamsBody[ranges[0]];
+                                var param2 = slideParamsBody[ranges[2]];
+                                var isAnyParamEmpty = param1.IsEmpty || param2.IsEmpty;
+                                if (isAnyParamEmpty || !double.TryParse(param1, out var cWaitTime))
+                                {
+                                    return false;
+                                }
+                                if (double.TryParse(param2, out var time)) // [3s##1.5s]
+                                {
+                                    slideTime += time;
+                                }
+                                else if (TryGetTimeFromRatio(bpm, param2, out time)) // [3s##8:3]
+                                {
+                                    slideTime += time;
+                                }
+                                else // undefined behavior
+                                {
+                                    return false;
+                                }
+                                customBpm ??= (60d / cWaitTime);
+                            }
+                            break;
+                        case 4: // [3s##160#8:3]
+                            {
+                                var param1 = slideParamsBody[ranges[0]];
+                                var param2 = slideParamsBody[ranges[2]];
+                                var param3 = slideParamsBody[ranges[3]];
+                                var isAnyParamEmpty = param1.IsEmpty || param2.IsEmpty || param3.IsEmpty;
+                                if (isAnyParamEmpty || !double.TryParse(param1, out var cWaitTime))
+                                {
+                                    return false;
+                                }
+                                if (!double.TryParse(param2, out var cBpm))
+                                {
+                                    return false;
+                                }
+                                if (!TryGetTimeFromRatio(cBpm, param3, out var time))
+                                {
+                                    return false;
+                                }
+                                slideTime += time;
+                                customBpm ??= (60d / cWaitTime);
+                            }
+                            break;
+                        default://undefined behavior
+                            return false;
+                    }
+                }
+
+                slideWaitTime = 1d / (customBpm ?? bpm / 60d);
+
+                outParams = (slideWaitTime, slideTime);
+                return true;
+            }
             //1: 是星星头的break
             //2: 是slide本体的break
             public static (bool isBreak, bool isBreakSlide) CheckHeadOrSlide(zString noteText, char detectChar)
@@ -501,17 +613,17 @@ namespace MajSimai
                     time = 0;
                     return true;
                 }
-                var holdParamBody = noteText.Slice(startIndex + 1, endIndex - startIndex - 1);
+                var holdParamsBody = noteText.Slice(startIndex + 1, endIndex - startIndex - 1);
                 Span<Range> ranges = stackalloc Range[2];
-                var tagCount = holdParamBody.Split(ranges, '#', StringSplitOptions.None);
+                var tagCount = holdParamsBody.Split(ranges, '#', StringSplitOptions.None);
 
                 switch(tagCount)
                 {
-                    case 0: // 2h[8:3]
-                        return TryGetTimeFromRatio(bpm, holdParamBody, out time);
-                    case 1: // 2h[#5.678] or 2h[150#2:1]
-                        var param1 = holdParamBody[ranges[0]];
-                        var param2 = holdParamBody[ranges[1]];
+                    case 1: // 2h[8:3]
+                        return TryGetTimeFromRatio(bpm, holdParamsBody, out time);
+                    case 2: // 2h[#5.678] or 2h[150#2:1]
+                        var param1 = holdParamsBody[ranges[0]];
+                        var param2 = holdParamsBody[ranges[1]];
 
                         if (param1.IsEmpty) //2h[#5.678]
                         {
@@ -540,7 +652,7 @@ namespace MajSimai
             /// <param name="noteText"></param>
             /// <param name="time"></param>
             /// <returns></returns>
-            [MethodImpl(MethodImplOptions.AggressiveInlining)]
+            [MethodImpl(MethodImplOptions.NoInlining)]
             static bool TryGetTimeFromRatio(double bpm, zString noteText, out double time)
             {
                 time = default;
