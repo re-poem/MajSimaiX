@@ -48,6 +48,12 @@ namespace MajSimai
             Bpm = bpm;
             HSpeed = hspeed;
         }
+        public SimaiTimingPoint Parse()
+        {
+            var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
+
+            return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
+        }
         public async Task<SimaiTimingPoint> ParseAsync()
         {
             return await Task.Run(() =>
