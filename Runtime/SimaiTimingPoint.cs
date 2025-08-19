@@ -23,7 +23,30 @@ namespace MajSimai
             RawTextPositionX = textPosX;
             RawTextPositionY = textPosY;
             RawTextPosition = rawTextPosition;
-            RawContent = rawContent.Replace("\n", "").Replace(" ", "");
+            if(!string.IsNullOrEmpty(rawContent))
+            {
+                var rRCSpan = rawContent.AsSpan();
+                Span<char> rCSpan = stackalloc char[rRCSpan.Length];
+                rRCSpan.Replace(rCSpan, '\n', ' ');
+                var i2 = 0;
+                for (var i = 0; i < rCSpan.Length; i++)
+                {
+                    var current = rCSpan[i];
+                    if (char.IsWhiteSpace(current))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        rCSpan[i2++] = current;
+                    }
+                }
+                RawContent = new string(rCSpan.Slice(0, i2));
+            }
+            else
+            {
+                RawContent = string.Empty;
+            }
             Bpm = bpm;
             HSpeed = hspeed;
             if (notes != null)

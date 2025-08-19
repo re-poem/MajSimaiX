@@ -88,7 +88,7 @@ namespace MajSimai
             for (var i = 0; i < source.Length; i++)
             {
                 ref var value = ref source[i];
-                if ((value?.Equals(value) ?? oldValue is null))
+                if ((value?.Equals(oldValue) ?? oldValue is null))
                 {
                     value = newValue;
                 }
@@ -129,9 +129,13 @@ namespace MajSimai
             for (var i = 0; i < source.Length; i++)
             {
                 var value = source[i];
-                if ((value?.Equals(value) ?? oldValue is null))
+                if ((value?.Equals(oldValue) ?? oldValue is null))
                 {
                     dest[i] = newValue;
+                }
+                else
+                {
+                    dest[i] = value;
                 }
             }
 #pragma warning restore CS8500
