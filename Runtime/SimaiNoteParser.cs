@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Diagnostics;
 using System.Linq;
 using System.Text;
 #nullable enable
@@ -10,17 +11,25 @@ namespace MajSimai
     {
         internal static SimaiNote[] GetNotes(double timing, double bpm, string noteContent)
         {
-            if (string.IsNullOrEmpty(noteContent))
-                return Array.Empty<SimaiNote>();
             var simaiNotes = new List<SimaiNote>();
+            GetNotes(timing, bpm, noteContent, simaiNotes);
+
+            return simaiNotes.ToArray();
+        }
+        internal static void GetNotes(double timing, double bpm, string noteContent, IList<SimaiNote> buffer)
+        {
+            if (string.IsNullOrEmpty(noteContent))
+            {
+                return;
+            }
             try
             {
                 var dummy = 0;
                 if (noteContent.Length == 2 && int.TryParse(noteContent, out dummy)) //连写数字
                 {
-                    simaiNotes.Add(GetSingleNote(timing, bpm, noteContent[0].ToString()));
-                    simaiNotes.Add(GetSingleNote(timing, bpm, noteContent[1].ToString()));
-                    return simaiNotes.ToArray();
+                    buffer.Add(GetSingleNote(timing, bpm, noteContent[0].ToString()));
+                    buffer.Add(GetSingleNote(timing, bpm, noteContent[1].ToString()));
+                    return;
                 }
 
                 if (noteContent.Contains('/'))
@@ -29,34 +38,37 @@ namespace MajSimai
                     foreach (var note in notes)
                     {
                         if (note.Contains('*'))
-                            simaiNotes.AddRange(GetSameHeadSlide(timing, bpm, note));
+                        {
+                            GetSameHeadSlide(timing, bpm, note, buffer);
+                        }
                         else
-                            simaiNotes.Add(GetSingleNote(timing, bpm, note));
+                        {
+                            buffer.Add(GetSingleNote(timing, bpm, note));
+                        }
                     }
-                    return simaiNotes.ToArray();
+                    return;
                 }
 
                 if (noteContent.Contains('*'))
                 {
-                    simaiNotes.AddRange(GetSameHeadSlide(timing, bpm, noteContent));
-                    return simaiNotes.ToArray();
+                    GetSameHeadSlide(timing, bpm, noteContent, buffer);
+                    return;
                 }
 
-                simaiNotes.Add(GetSingleNote(timing, bpm, noteContent));
-                return simaiNotes.ToArray();
+                buffer.Add(GetSingleNote(timing, bpm, noteContent));
             }
-            catch
+            catch(Exception e)
             {
-                return Array.Empty<SimaiNote>();
+                Debug.Fail(e.ToString());
+                return;
             }
         }
 
-        internal static SimaiNote[] GetSameHeadSlide(double timing, double bpm, string content)
+        internal static void GetSameHeadSlide(double timing, double bpm, string content, IList<SimaiNote> buffer)
         {
-            var simaiNotes = new List<SimaiNote>();
             var noteContents = content.Split('*');
             var note1 = GetSingleNote(timing, bpm, noteContents[0]);
-            simaiNotes.Add(note1);
+            buffer.Add(note1);
             var newNoteContent = noteContents.ToList();
             newNoteContent.RemoveAt(0);
             //删除第一个NOTE
@@ -65,10 +77,8 @@ namespace MajSimai
                 var note2text = note1.StartPosition + item;
                 var note2 = GetSingleNote(timing, bpm, note2text);
                 note2.IsSlideNoHead = true;
-                simaiNotes.Add(note2);
+                buffer.Add(note2);
             }
-
-            return simaiNotes.ToArray();
         }
 
         internal static SimaiNote GetSingleNote(double timing, double bpm, string noteText)
