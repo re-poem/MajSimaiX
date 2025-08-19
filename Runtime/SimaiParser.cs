@@ -151,8 +151,15 @@ namespace MajSimai
                                 i++;
                                 Xcount++;
                             }
-
-                            if (!float.TryParse(beats_s, out beats))
+                            if (beats_s[0] == '#')
+                            {
+                                if (!float.TryParse(beats_s.AsSpan(1), out var beatInterval))
+                                {
+                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, beats_s, "Beats value must be a number");
+                                }
+                                beats = 240f / (bpm * beatInterval);
+                            }
+                            else if (!float.TryParse(beats_s, out beats))
                             {
                                 throw new InvalidSimaiMarkupException(Ycount, Xcount, beats_s, "Beats value must be a number");
                             }

@@ -319,88 +319,6 @@ namespace MajSimai
         }
 
         
-
-        internal static double GetTimeFromBeats(double bpm, string noteText)
-        {
-            if (noteText.Count(c => c == '[') > 1)
-            {
-                // 组合slide 有多个时长
-                double wholeTime = 0;
-
-                var partStartIndex = 0;
-                while (noteText.IndexOf('[', partStartIndex) >= 0)
-                {
-                    var startIndex = noteText.IndexOf('[', partStartIndex);
-                    var overIndex = noteText.IndexOf(']', partStartIndex);
-                    partStartIndex = overIndex + 1;
-                    var innerString = noteText.Substring(startIndex + 1, overIndex - startIndex - 1);
-                    var timeOneBeat = 1d / (bpm / 60d);
-                    if (innerString.Count(o => o == '#') == 1)
-                    {
-                        var times = innerString.Split('#');
-                        if (times[1].Contains(':'))
-                        {
-                            innerString = times[1];
-                            timeOneBeat = 1d / (double.Parse(times[0]) / 60d);
-                        }
-                        else
-                        {
-                            wholeTime += double.Parse(times[1]);
-                            continue;
-                        }
-                    }
-
-                    if (innerString.Count(o => o == '#') == 2)
-                    {
-                        var times = innerString.Split('#');
-                        wholeTime += double.Parse(times[2]);
-                        continue;
-                    }
-
-                    var numbers = innerString.Split(':');
-                    var divide = int.Parse(numbers[0]);
-                    var count = int.Parse(numbers[1]);
-
-
-                    wholeTime += timeOneBeat * 4d / divide * count;
-                }
-
-                return wholeTime;
-            }
-
-            {
-                var startIndex = noteText.IndexOf('[');
-                var overIndex = noteText.IndexOf(']');
-                var innerString = noteText.Substring(startIndex + 1, overIndex - startIndex - 1);
-                var timeOneBeat = 1d / (bpm / 60d);
-                if (innerString.Count(o => o == '#') == 1)
-                {
-                    var times = innerString.Split('#');
-                    if (times[1].Contains(':'))
-                    {
-                        innerString = times[1];
-                        timeOneBeat = 1d / (double.Parse(times[0]) / 60d);
-                    }
-                    else
-                    {
-                        return double.Parse(times[1]);
-                    }
-                }
-
-                if (innerString.Count(o => o == '#') == 2)
-                {
-                    var times = innerString.Split('#');
-                    return double.Parse(times[2]);
-                }
-
-                var numbers = innerString.Split(':'); //TODO:customBPM
-                var divide = int.Parse(numbers[0]);
-                var count = int.Parse(numbers[1]);
-
-
-                return timeOneBeat * 4d / divide * count;
-            }
-        }
         static class NoteHelper
         {
             public static bool TryGetSlideParams(double bpm, zString noteText, out (double slideWaitTime, double slideTime) outParams)
@@ -411,17 +329,19 @@ namespace MajSimai
                 var slideTime = 0d;
                 var customBpm = (double?)null;
                 var nextStartIndex = 0;
+                var startIndex = 0;
                 Span<Range> ranges = stackalloc Range[3];
-                while ((nextStartIndex = noteText[nextStartIndex..].IndexOf('[')) != -1)
+                while ((startIndex = noteText[nextStartIndex..].IndexOf('[')) != -1)
                 {
-                    var startIndex = nextStartIndex;
-                    var overIndex = noteText[startIndex..].IndexOf(']');
+                    var slideBody = noteText[(nextStartIndex + startIndex)..];
+                    var overIndex = slideBody.IndexOf(']');
                     if(overIndex == -1)
                     {
                         return false;
                     }
-                    nextStartIndex = overIndex + 1;
-                    var slideParamsBody = noteText.Slice(startIndex + 1, overIndex - startIndex - 1);
+
+                    nextStartIndex += overIndex + startIndex + 1;
+                    var slideParamsBody = slideBody.Slice(1, overIndex - 1);
                     var tagCount = slideParamsBody.Split(ranges, '#', StringSplitOptions.None);
 
                     switch(tagCount)
@@ -585,41 +505,6 @@ namespace MajSimai
                 //    }
                 //}
                 //return false;
-            }
-            public static bool TryGetStarWaitTime(double bpm, zString noteText,out double time)
-            {
-                time = default;
-
-                var startIndex = noteText.IndexOf('[');
-                var overIndex = noteText.IndexOf(']');
-
-                if(startIndex == -1 || overIndex == -1)
-                {
-                    return false;
-                }
-
-                var slideParamStr = noteText.Slice(startIndex + 1, overIndex - startIndex - 1);
-                Span<Range> ranges = stackalloc Range[3];
-                var tagCount = slideParamStr.Split(ranges, '#', StringSplitOptions.None);
-
-                // 160#8:3 or 160#2s
-                if (tagCount == 1)
-                {
-                    var timeStr = slideParamStr[ranges[0]];
-                    if (timeStr.IsEmpty || !double.TryParse(timeStr, out bpm))
-                    {
-                        return false;
-                    }
-                }
-                else if (tagCount == 2 || tagCount == 3)// 3s##1.5s or 3s##8:3 or 3s##160#8:3
-                {
-                    var timeStr = slideParamStr[ranges[0]];
-
-                    return !timeStr.IsEmpty && double.TryParse(timeStr, out time);
-                }
-
-                time = 1d / (bpm / 60d);
-                return true;
             }
             public static bool TryGetHoldTimeFromBeats(double bpm, zString noteText, out double time)
             {
