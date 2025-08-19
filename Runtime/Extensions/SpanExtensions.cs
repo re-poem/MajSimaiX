@@ -54,7 +54,61 @@ namespace MajSimai
             return destIndex;
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static bool Contains<T>(this ReadOnlySpan<T> source, T value) where T: IEquatable<T>
+        public static bool Contains<T>(this Span<T> source, T value) where T : IEquatable<T>
+        {
+            return ((ReadOnlySpan<T>)source).Contains(value);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Count<T>(this Span<T> source, T value) where T : IEquatable<T>?
+        {
+            return ((ReadOnlySpan<T>)source).Count(value);
+        }
+        public static Span<char> Trim(this Span<char> source)
+        {
+            if (source.IsEmpty ||
+                (!char.IsWhiteSpace(source[0]) && !char.IsWhiteSpace(source[^1])))
+            {
+                return source;
+            }
+            var start = 0;
+            for (; start < source.Length; start++)
+            {
+                if (!char.IsWhiteSpace(source[start]))
+                {
+                    break;
+                }
+            }
+
+            int end = source.Length - 1;
+            for (; end > start; end--)
+            {
+                if (!char.IsWhiteSpace(source[end]))
+                {
+                    break;
+                }
+            }
+            return source.Slice(start, end - start + 1);
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static int Count<T>(this ReadOnlySpan<T> source, T value) where T : IEquatable<T>?
+        {
+            if (source.IsEmpty)
+            {
+                return 0;
+            }
+            var count = 0;
+            for (var i = 0; i < source.Length; i++)
+            {
+                var current = source[i];
+                if ((current?.Equals(value) ?? value is null))
+                {
+                    count++;
+                }
+            }
+            return count;
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static bool Contains<T>(this ReadOnlySpan<T> source, T value) where T: IEquatable<T>?
         {
             if(source.IsEmpty)
             {
@@ -62,7 +116,8 @@ namespace MajSimai
             }
             for (var i = 0; i < source.Length; i++)
             {
-                if (source[i].Equals(value))
+                var current = source[i];
+                if ((current?.Equals(value) ?? value is null))
                 {
                     return true;
                 }
@@ -93,6 +148,25 @@ namespace MajSimai
                     value = newValue;
                 }
             }
+        }
+        public static Span<T> RemoveAll<T>(this Span<T> source, T value) where T : IEquatable<T>?
+        {
+            if (source.IsEmpty)
+            {
+                return source;
+            }
+            var i2 = 0;
+            for (var i = 0; i < source.Length; i++)
+            {
+                var current = source[i];
+                if ((value?.Equals(value) ?? value is null))
+                {
+                    continue;
+                }
+                source[i2++] = current;
+            }
+
+            return source.Slice(0, i2);
         }
         /// <summary>
         /// Copies <paramref name="source"/> to <paramref name="dest"/>, replacing all occurrences of <paramref name="oldValue"/> with <paramref name="newValue"/>.

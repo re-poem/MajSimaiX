@@ -1,6 +1,8 @@
 ﻿using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
+using System.Diagnostics.CodeAnalysis;
 using System.Linq;
 using System.Text;
 #nullable enable
@@ -24,11 +26,16 @@ namespace MajSimai
             }
             try
             {
-                var dummy = 0;
-                if (noteContent.Length == 2 && int.TryParse(noteContent, out dummy)) //连写数字
+                if (noteContent.Length == 2 && int.TryParse(noteContent, out _)) //连写数字
                 {
-                    buffer.Add(GetSingleNote(timing, bpm, noteContent[0].ToString()));
-                    buffer.Add(GetSingleNote(timing, bpm, noteContent[1].ToString()));
+                    if (TryGetSingleNote(timing, bpm, noteContent.AsSpan().Slice(0, 1), out var note1))
+                    {
+                        buffer.Add(note1);
+                    }
+                    if (TryGetSingleNote(timing, bpm, noteContent.AsSpan().Slice(1, 1), out var note2))
+                    {
+                        buffer.Add(note2);
+                    }
                     return;
                 }
 
@@ -43,111 +50,206 @@ namespace MajSimai
                         }
                         else
                         {
-                            buffer.Add(GetSingleNote(timing, bpm, note));
+                            if(TryGetSingleNote(timing, bpm, note, out var simaiNote))
+                            {
+                                buffer.Add(simaiNote);
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"Cannot parse note from text: \"{note}\"");
+                            }    
                         }
                     }
-                    return;
                 }
-
-                if (noteContent.Contains('*'))
+                else
                 {
-                    GetSameHeadSlide(timing, bpm, noteContent, buffer);
-                    return;
+                    if (noteContent.Contains('*'))
+                    {
+                        GetSameHeadSlide(timing, bpm, noteContent, buffer);
+                    }
+                    else
+                    {
+                        if (TryGetSingleNote(timing, bpm, noteContent, out var note))
+                        {
+                            buffer.Add(note);
+                        }
+                        else
+                        {
+                            Debug.WriteLine($"Cannot parse note from text: \"{noteContent}\"");
+                        }
+                    }
                 }
-
-                buffer.Add(GetSingleNote(timing, bpm, noteContent));
             }
             catch(Exception e)
             {
-                Debug.Fail(e.ToString());
+                Debug.WriteLine(e.ToString());
                 return;
             }
         }
 
-        internal static void GetSameHeadSlide(double timing, double bpm, string content, IList<SimaiNote> buffer)
+        internal static void GetSameHeadSlide(double timing, double bpm, rString content, IList<SimaiNote> buffer)
         {
-            var noteContents = content.Split('*');
-            var note1 = GetSingleNote(timing, bpm, noteContents[0]);
-            buffer.Add(note1);
-            var newNoteContent = noteContents.ToList();
-            newNoteContent.RemoveAt(0);
-            //删除第一个NOTE
-            foreach (var item in newNoteContent)
+            Span<Range> ranges = stackalloc Range[content.Count('*') + 1];
+            _ = content.Split(ranges, '*', StringSplitOptions.RemoveEmptyEntries);
+            if (TryGetSingleNote(timing, bpm, content[ranges[0]],out var note1))
             {
-                var note2text = note1.StartPosition + item;
-                var note2 = GetSingleNote(timing, bpm, note2text);
-                note2.IsSlideNoHead = true;
-                buffer.Add(note2);
+                buffer.Add(note1);
+            }
+            else
+            {
+                Debug.WriteLine($"Cannot parse slide from text: \"{new string(content[ranges[0]])}\"");
+                return;
+            }
+            //var newNoteContent = noteContents.ToList();
+            //newNoteContent.RemoveAt(0);
+            ////删除第一个NOTE
+
+            for (var i = 1; i < ranges.Length; i++)
+            {
+                var partNoteText = content[ranges[i]];
+                var rentedArray = ArrayPool<char>.Shared.Rent(partNoteText.Length + 1);
+                try
+                {
+                    rentedArray[0] = content[ranges[0]][0];
+                    var noteText = rentedArray.AsSpan();
+                    partNoteText.CopyTo(noteText.Slice(1));
+                    noteText = noteText.Slice(0, partNoteText.Length + 1);
+
+                    if (TryGetSingleNote(timing, bpm, noteText, out var note2))
+                    {
+                        note2.IsSlideNoHead = true;
+                        buffer.Add(note2);
+                    }
+                    else
+                    {
+                        Debug.WriteLine($"Cannot parse slide from text: \"{new string(noteText)}\"");
+                        continue;
+                    }
+                }
+                finally
+                {
+                    ArrayPool<char>.Shared.Return(rentedArray, true);
+                }
             }
         }
 
-        internal static SimaiNote GetSingleNote(double timing, double bpm, string noteText)
+        internal static bool TryGetSingleNote(double timing, double bpm, rString noteText,[NotNullWhen(true)] out SimaiNote? outSimaiNote)
         {
+            outSimaiNote = default;
+            Span<char> noteTextCopy = stackalloc char[noteText.Length];
+            noteText.CopyTo(noteTextCopy);
             var simaiNote = new SimaiNote();
 
-            if (IsTouchNote(noteText))
+            if (IsTouchNote(noteTextCopy))
             {
-                simaiNote.TouchArea = noteText[0];
-                if (simaiNote.TouchArea != 'C') simaiNote.StartPosition = int.Parse(noteText[1].ToString());
-                else simaiNote.StartPosition = 8;
+                simaiNote.TouchArea = noteTextCopy[0];
+                if (simaiNote.TouchArea != 'C')
+                {
+                    if(noteTextCopy.Length < 2)
+                    {
+                        return false;
+                    }
+                    else if(int.TryParse(noteTextCopy.Slice(1, 1), out var startPosition))
+                    {
+                        simaiNote.StartPosition = startPosition;
+                    }
+                    else
+                    {
+                        return false;
+                    }
+                }
+                else 
+                {
+                    simaiNote.StartPosition = 8;
+                }
                 simaiNote.Type = SimaiNoteType.Touch;
             }
             else
             {
-                simaiNote.StartPosition = int.Parse(noteText[0].ToString());
+                if (int.TryParse(noteTextCopy.Slice(0, 1), out var startPosition))
+                {
+                    simaiNote.StartPosition = startPosition;
+                }
+                else
+                {
+                    return false;
+                }
                 simaiNote.Type = SimaiNoteType.Tap; //if nothing happen in following if
             }
-
-            if (noteText.Contains('f')) simaiNote.IsHanabi = true;
+            if (noteTextCopy.Contains('f'))
+            {
+                simaiNote.IsHanabi = true;
+            }
 
             //hold
-            if (noteText.Contains('h'))
+            if (noteTextCopy.Contains('h'))
             {
-                if (IsTouchNote(noteText))
+                if (IsTouchNote(noteTextCopy))
                 {
                     simaiNote.Type = SimaiNoteType.TouchHold;
-                    simaiNote.HoldTime = GetTimeFromBeats(bpm, noteText);
+                    if(NoteHelper.TryGetHoldTimeFromBeats(bpm, noteTextCopy, out var holdTime))
+                    {
+                        simaiNote.HoldTime = holdTime;
+                    }
+                    else
+                    {
+                        return false;
+                    }
                     //Console.WriteLine("Hold:" +simaiNote.touchArea+ simaiNote.startPosition + " TimeLastFor:" + simaiNote.holdTime);
                 }
                 else
                 {
                     simaiNote.Type = SimaiNoteType.Hold;
-                    if (noteText.Last() == 'h')
+                    if (noteTextCopy[^1] == 'h')
+                    {
                         simaiNote.HoldTime = 0;
+                    }
                     else
-                        simaiNote.HoldTime = GetTimeFromBeats(bpm, noteText);
+                    {
+                        if (NoteHelper.TryGetHoldTimeFromBeats(bpm, noteTextCopy, out var holdTime))
+                        {
+                            simaiNote.HoldTime = holdTime;
+                        }
+                        else
+                        {
+                            return false;
+                        }
+                    }
                     //Console.WriteLine("Hold:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.holdTime);
                 }
             }
 
             //slide
-            if (IsSlideNote(noteText))
+            if (IsSlideNote(noteTextCopy))
             {
                 simaiNote.Type = SimaiNoteType.Slide;
-                simaiNote.SlideTime = GetTimeFromBeats(bpm, noteText);
-                var timeStarWait = GetStarWaitTime(bpm, noteText);
+                simaiNote.SlideTime = GetTimeFromBeats(bpm, noteTextCopy);
+                if(!NoteHelper.TryGetStarWaitTime(bpm, noteTextCopy, out var timeStarWait))
+                {
+                    return false;
+                }
                 
-                if (noteText.Contains('!'))
+                if (noteTextCopy.Contains('!'))
                 {
                     simaiNote.IsSlideNoHead = true;
-                    noteText = noteText.Replace("!", "");
+                    noteTextCopy = noteTextCopy.RemoveAll('!');
                     simaiNote.SlideStartTime = timing;
                 }
-                else if (noteText.Contains('?'))
+                else if (noteTextCopy.Contains('?'))
                 {
                     simaiNote.IsSlideNoHead = true;
-                    noteText = noteText.Replace("?", "");
+                    noteTextCopy = noteTextCopy.RemoveAll('?');
                     simaiNote.SlideStartTime = timing + timeStarWait;
                 }
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
             }
 
             //break
-            if (noteText.Contains('b'))
+            if (noteTextCopy.Contains('b'))
             {
                 if (simaiNote.Type == SimaiNoteType.Slide)
                 {
-                    var ret = CheckHeadOrSlide(noteText, 'b');
+                    var ret = CheckHeadOrSlide(noteTextCopy, 'b');
                     simaiNote.IsBreak = ret.Item1;
                     simaiNote.IsSlideBreak = ret.Item2;
                 }
@@ -157,30 +259,32 @@ namespace MajSimai
                     simaiNote.IsBreak = true;
                 }
 
-                noteText = noteText.Replace("b", "");
+                noteTextCopy = noteTextCopy.RemoveAll('b');
             }
 
             //EX
-            if (noteText.Contains('x'))
+            if (noteTextCopy.Contains('x'))
             {
                 simaiNote.IsEx = true;
-                noteText = noteText.Replace("x", "");
+                noteTextCopy = noteTextCopy.RemoveAll('x');
             }
 
             //starHead
-            if (noteText.Contains('$'))
+            if (noteTextCopy.Contains('$'))
             {
                 simaiNote.IsForceStar = true;
-                if (noteText.Count(o => o == '$') == 2)
+                if (noteTextCopy.Count('$') == 2)
+                {
                     simaiNote.IsFakeRotate = true;
-                noteText = noteText.Replace("$", "");
+                }
+                noteTextCopy = noteTextCopy.RemoveAll('$');
             }
 
-            if(noteText.Contains('m'))
+            if(noteTextCopy.Contains('m'))
             {
                 if(simaiNote.Type == SimaiNoteType.Slide)
                 {
-                    var ret = CheckHeadOrSlide(noteText, 'm');
+                    var ret = CheckHeadOrSlide(noteTextCopy, 'm');
                     simaiNote.IsMine = ret.Item1;
                     simaiNote.IsMineSlide = ret.Item2;
                 }
@@ -189,16 +293,17 @@ namespace MajSimai
                     // 除此之外的Mine就无所谓了
                     simaiNote.IsMine = true;
                 }
-                noteText = noteText.Replace("m", "");
+                noteTextCopy = noteTextCopy.RemoveAll('m');
             }
 
-            simaiNote.RawContent = (noteText ?? string.Empty).Trim();
-            return simaiNote;
+            simaiNote.RawContent = new string(noteTextCopy.Trim());
+            outSimaiNote = simaiNote;
+            return true;
         }
 
         //1: 是星星头的break
         //2: 是slide本体的break
-        private static (bool,bool) CheckHeadOrSlide(string noteText, char detectChar)
+        private static (bool,bool) CheckHeadOrSlide(rString noteText, char detectChar)
         {
             // 如果是Slide 则要检查这个b到底是星星头的还是Slide本体的
 
@@ -206,17 +311,22 @@ namespace MajSimai
             bool isBreak = false;
             bool isBreakSlide = false;
             var startIndex = 0;
-            while ((startIndex = noteText.IndexOf(detectChar, startIndex)) != -1)
+            while ((startIndex = noteText.Slice(startIndex).IndexOf(detectChar)) != -1)
             {
                 if (startIndex < noteText.Length - 1)
                 {
                     // 如果b不是最后一个字符 我们就检查b之后一个字符是不是`[`符号：如果是 那么就是break slide
-                    if (noteText[startIndex + 1] == '[')
+                    // startIndex + 1 < noteText.Length 防越界
+                    if (startIndex + 1 < noteText.Length && noteText[startIndex + 1] == '[')
+                    {
                         isBreakSlide = true;
+                    }
                     else
+                    {
                         // 否则 那么不管这个break出现在slide的哪一个地方 我们都认为他是星星头的break
                         // SHIT CODE!
                         isBreak = true;
+                    }
                 }
                 else
                 {
@@ -360,7 +470,7 @@ namespace MajSimai
         }
         static class NoteHelper
         {
-            internal static bool TryGetStarWaitTime(double bpm, rString noteText,out double time)
+            public static bool TryGetStarWaitTime(double bpm, rString noteText,out double time)
             {
                 time = default;
 
@@ -393,6 +503,79 @@ namespace MajSimai
                 }
 
                 time = 1d / (bpm / 60d);
+                return true;
+            }
+            public static bool TryGetHoldTimeFromBeats(double bpm, rString noteText, out double time)
+            {
+                time = default;
+                var startIndex = noteText.IndexOf('[');
+                var endIndex = noteText.IndexOf(']');
+                if (startIndex == -1 || endIndex == -1)
+                {
+                    time = 0;
+                    return true;
+                }
+                var holdParamBody = noteText.Slice(startIndex + 1, endIndex - startIndex - 1);
+                Span<Range> ranges = stackalloc Range[2];
+                var tagCount = holdParamBody.Split(ranges, '#', StringSplitOptions.None);
+
+                switch(tagCount)
+                {
+                    case 0: // 2h[8:3]
+                        return TryGetTimeFromRatio(bpm, holdParamBody, out time);
+                    case 1: // 2h[#5.678] or 2h[150#2:1]
+                        var param1 = holdParamBody[ranges[0]];
+                        var param2 = holdParamBody[ranges[1]];
+
+                        if (param1.IsEmpty) //2h[#5.678]
+                        {
+                            return double.TryParse(param2, out time);
+                        }
+                        else //2h[150#2:1]
+                        {
+                            if (param2.IsEmpty)
+                            {
+                                return false;
+                            }
+                            else if (!double.TryParse(param1, out bpm))
+                            {
+                                return false;
+                            }
+                            return TryGetTimeFromRatio(bpm, param2, out time);
+                        }
+                    default:
+                        return false; //undefined behavior
+                }
+            }
+            /// <summary>
+            /// Calculates the <paramref name="time"/> from <paramref name="noteText"/> in "x:y" format according to a given <paramref name="bpm"/>
+            /// </summary>
+            /// <param name="bpm"></param>
+            /// <param name="noteText"></param>
+            /// <param name="time"></param>
+            /// <returns></returns>
+            static bool TryGetTimeFromRatio(double bpm, rString noteText, out double time)
+            {
+                time = default;
+                var timeOneBeat = 1d / (bpm / 60d);
+                Span<Range> ranges = stackalloc Range[2];
+                var tagCount = noteText.Split(ranges, ':', StringSplitOptions.None);
+                if (tagCount != 2)
+                {
+                    return false;
+                }
+                var divideStr = noteText[ranges[0]];
+                var countStr = noteText[ranges[1]];
+                if (divideStr.IsEmpty || countStr.IsEmpty)
+                {
+                    return false;
+                }
+                if (!int.TryParse(divideStr, out var divide) || !int.TryParse(countStr, out var count))
+                {
+                    return false;
+                }
+                time = timeOneBeat * 4d / divide * count;
+
                 return true;
             }
         }
