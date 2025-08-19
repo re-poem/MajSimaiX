@@ -19,9 +19,9 @@ namespace MajSimai
 
             return simaiNotes.ToArray();
         }
-        internal static void GetNotes(double timing, double bpm, string noteContent, IList<SimaiNote> buffer)
+        internal static void GetNotes(double timing, double bpm, zString noteContent, IList<SimaiNote> buffer)
         {
-            if (string.IsNullOrEmpty(noteContent))
+            if (noteContent.IsEmpty)
             {
                 return;
             }
@@ -29,56 +29,74 @@ namespace MajSimai
             {
                 if (noteContent.Length == 2 && int.TryParse(noteContent, out _)) //连写数字
                 {
-                    if (TryGetSingleNote(timing, bpm, noteContent.AsSpan().Slice(0, 1), out var note1))
+                    if (TryGetSingleNote(timing, bpm, noteContent.Slice(0, 1), out var note1))
                     {
                         buffer.Add(note1);
                     }
-                    if (TryGetSingleNote(timing, bpm, noteContent.AsSpan().Slice(1, 1), out var note2))
+                    if (TryGetSingleNote(timing, bpm, noteContent.Slice(1, 1), out var note2))
                     {
                         buffer.Add(note2);
                     }
                     return;
                 }
-
-                if (noteContent.Contains('/'))
+                var tagCount = noteContent.Count('/');
+                var rentedArray = ArrayPool<Range>.Shared.Rent(tagCount + 1);
+                
+                try
                 {
-                    var notes = noteContent.Split('/');
-                    foreach (var note in notes)
+                    var ranges = rentedArray.AsSpan(0, tagCount);
+                    ranges.Clear();
+
+                    if (tagCount != 0)
                     {
-                        if (note.Contains('*'))
+                        for (var i = 0; i < ranges.Length; i++)
                         {
-                            GetSameHeadSlide(timing, bpm, note, buffer);
-                        }
-                        else
-                        {
-                            if(TryGetSingleNote(timing, bpm, note, out var simaiNote))
+                            var range = ranges[i];
+                            var noteText = noteContent[range];
+
+                            if(noteText.IsEmpty)
                             {
-                                buffer.Add(simaiNote);
+                                continue;
+                            }
+                            if (noteText.Contains('*'))
+                            {
+                                GetSameHeadSlide(timing, bpm, noteText, buffer);
                             }
                             else
                             {
-                                Debug.WriteLine($"Cannot parse note from text: \"{note}\"");
-                            }    
+                                if (TryGetSingleNote(timing, bpm, noteText, out var simaiNote))
+                                {
+                                    buffer.Add(simaiNote);
+                                }
+                                else
+                                {
+                                    Debug.WriteLine($"Cannot parse note from text: \"{new string(noteText)}\"");
+                                }
+                            }
                         }
-                    }
-                }
-                else
-                {
-                    if (noteContent.Contains('*'))
-                    {
-                        GetSameHeadSlide(timing, bpm, noteContent, buffer);
                     }
                     else
                     {
-                        if (TryGetSingleNote(timing, bpm, noteContent, out var note))
+                        if (noteContent.Contains('*'))
                         {
-                            buffer.Add(note);
+                            GetSameHeadSlide(timing, bpm, noteContent, buffer);
                         }
                         else
                         {
-                            Debug.WriteLine($"Cannot parse note from text: \"{noteContent}\"");
+                            if (TryGetSingleNote(timing, bpm, noteContent, out var note))
+                            {
+                                buffer.Add(note);
+                            }
+                            else
+                            {
+                                Debug.WriteLine($"Cannot parse note from text: \"{new string(noteContent)}\"");
+                            }
                         }
                     }
+                }
+                finally
+                {
+                    ArrayPool<Range>.Shared.Return(rentedArray, true);
                 }
             }
             catch(Exception e)
