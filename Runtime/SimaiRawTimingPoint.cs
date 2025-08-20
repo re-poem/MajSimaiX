@@ -6,12 +6,12 @@ using System.Threading.Tasks;
 #nullable enable
 namespace MajSimai
 {
-    internal class SimaiRawTimingPoint
+    internal readonly struct SimaiRawTimingPoint
     {
-        public double Timing { get; } = 0;
-        public float Bpm { get; } = -1;
-        public float HSpeed { get; } = 1f;
-        public string RawContent { get; } = string.Empty;
+        public double Timing { get; }
+        public float Bpm { get; }
+        public float HSpeed { get; } 
+        public string RawContent { get; }
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
 
@@ -54,14 +54,9 @@ namespace MajSimai
 
             return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
         }
-        public async Task<SimaiTimingPoint> ParseAsync()
+        public Task<SimaiTimingPoint> ParseAsync()
         {
-            return await Task.Run(() =>
-            {
-                var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
-
-                return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
-            });
+            return Task.Run(Parse);
         }
     }
 }

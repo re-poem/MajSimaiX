@@ -16,13 +16,21 @@ namespace MajSimai
         public SimaiFile(string path, string title, string artist, float offset, SimaiChart[] levels, string[] fumens, SimaiCommand[] commands)
         {
             if (levels is null)
+            {
                 throw new ArgumentNullException(nameof(levels));
+            }
             if (fumens is null)
+            {
                 throw new ArgumentNullException(nameof(fumens));
+            }
             if (levels.Length != 7)
+            {
                 throw new ArgumentException("The length of parameter \"levels\" must be 7");
+            }
             if (fumens.Length != 7)
+            {
                 throw new ArgumentException("The length of parameter \"fumens\" must be 7");
+            }
             Path = path;
             Title = title;
             Artist = artist;
@@ -35,13 +43,13 @@ namespace MajSimai
         {
             var emptyCharts = new SimaiChart[7]
             {
-                new SimaiChart(),
-                new SimaiChart(),
-                new SimaiChart(),
-                new SimaiChart(),
-                new SimaiChart(),
-                new SimaiChart(),
-                new SimaiChart(),
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
+                SimaiChart.Empty,
             };
             var emptyFumens = new string[7]
             {
