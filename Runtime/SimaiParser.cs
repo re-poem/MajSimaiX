@@ -33,16 +33,30 @@ namespace MajSimai
             }
             var allTask = Task.WhenAll(tasks);
             while (!allTask.IsCompleted)
+            {
                 await Task.Yield();
+            }
             for(var i = 0; i < 7; i++)
             {
                 var task = tasks[i];
                 if (task.IsFaulted)
-                    charts[i] = new SimaiChart(metadata.Levels[i], metadata.Designers[i], Array.Empty<SimaiTimingPoint>());
+                {
+                    charts[i] = new SimaiChart(metadata.Levels[i], metadata.Designers[i], metadata.Fumens[i], Array.Empty<SimaiTimingPoint>());
+                }
                 else
+                {
                     charts[i] = task.Result;
+                }
             }
-            return new SimaiFile(filePath, metadata.Title, metadata.Artist, metadata.Offset, charts, metadata.Fumens, metadata.Commands);
+            var simaiFile = new SimaiFile(filePath, metadata.Title, metadata.Artist, metadata.Offset, charts, null);
+            var cmds = simaiFile.Commands;
+            var cmdCount = metadata.Commands.Length;
+            for (var i = 0; i < cmdCount; i++)
+            {
+                simaiFile.Commands.Add(metadata.Commands[i]);
+            }
+
+            return simaiFile;
         }
         public async Task<SimaiMetadata> ParseMetadataAsync(string filePath)
         {
@@ -72,7 +86,7 @@ namespace MajSimai
             {
                 if (string.IsNullOrEmpty(fumen))
                 {
-                    return new SimaiChart(level, designer, null);
+                    return new SimaiChart(level, designer, string.Empty, null);
                 }
                 var noteRawTiminglist = new List<SimaiRawTimingPoint>();
                 var commaTimingList = new List<SimaiTimingPoint>();
@@ -239,7 +253,7 @@ namespace MajSimai
                         noteTimingPoints[i] = timingPoint;
                     }
 
-                    return new SimaiChart(level, designer, noteTimingPoints,commaTimingList.ToArray());
+                    return new SimaiChart(level, designer, fumen, noteTimingPoints, commaTimingList.ToArray());
                 }
                 catch (InvalidSimaiMarkupException)
                 {
@@ -371,55 +385,93 @@ namespace MajSimai
 
             return Convert.ToBase64String(hash);
         }
-        public async Task<string> DeParseAsStringAsync(SimaiFile simaiFile)
-        {
-            return await Task.Run(() =>
-            {
-                var sb = new StringBuilder();
-                var finalDesigner = string.Empty;
 
-                sb.AppendLine($"&title={simaiFile.Title}");
-                sb.AppendLine($"&artist={simaiFile.Artist}");
-                sb.AppendLine($"&first={simaiFile.Offset}");
-                for (int i = 0; i < 7; i++)
-                {
-                    var chart = simaiFile.Charts[i];
-                    if (chart is null) continue;
-                    if (!string.IsNullOrEmpty(chart.Designer))
-                    {
-                        finalDesigner = chart.Designer;
-                        sb.AppendLine($"&des_{i + 1}={chart.Designer}");
-                    }
-                    if (!string.IsNullOrEmpty(chart.Level))
-                    {
-                        sb.AppendLine($"&lv_{i + 1}={chart.Level}");
-                    }
-                }
-                sb.AppendLine($"&des={finalDesigner}");
-                foreach (var command in simaiFile.Commands)
-                {
-                    sb.AppendLine($"&{command.Prefix}={command.Value}");
-                }
-                for (int i = 0; i < 7; i++)
-                {
-                    var chart = simaiFile.RawCharts[i];
-                    if (string.IsNullOrEmpty(chart)) continue;
-                    sb.AppendLine($"&inote_{i + 1}={chart}");
-                }
-                return sb.ToString();
-            });
-        }
-        public string DeParseAsString(SimaiFile simaiFile) => DeParseAsStringAsync(simaiFile).Result;
         //Note: this method only deparse RawChart
-        public void DeParse(SimaiFile simaiFile,string path)
+        public string Deparse(SimaiFile simaiFile)
         {
-            var fumen = DeParseAsString(simaiFile);
-            File.WriteAllText(path, fumen);
+            var sb = new StringBuilder();
+            var finalDesigner = string.Empty;
+
+            sb.Append($"&title=")
+              .AppendLine(simaiFile.Title)
+              .Append($"&artist=")
+              .AppendLine(simaiFile.Artist)
+              .Append("&first=")
+              .Append(simaiFile.Offset)
+              .AppendLine();
+            for (int i = 0; i < 7; i++)
+            {
+                var chart = simaiFile.Charts[i];
+                if (chart is null)
+                {
+                    continue;
+                }
+                if (!string.IsNullOrEmpty(chart.Designer))
+                {
+                    finalDesigner = chart.Designer;
+                    sb.Append("&des_")
+                      .Append(i + 1)
+                      .Append('=')
+                      .AppendLine(chart.Designer);
+                }
+                if (!string.IsNullOrEmpty(chart.Level))
+                {
+                    sb.Append("&lv_")
+                      .Append(i + 1)
+                      .Append('=')
+                      .AppendLine(chart.Level);
+                }
+            }
+            sb.Append("&des_")
+              .Append('=')
+              .AppendLine(finalDesigner);
+            foreach (var command in simaiFile.Commands)
+            {
+                sb.Append('&')
+                  .Append(command.Prefix)
+                  .Append('=')
+                  .AppendLine(command.Value);
+            }
+            for (int i = 0; i < 7; i++)
+            {
+                var chart = simaiFile.Charts[i].Fumen;
+                if (string.IsNullOrEmpty(chart))
+                {
+                    continue;
+                }
+                sb.Append("&inote_")
+                  .Append(i + 1)
+                  .Append('=')
+                  .Append(chart)
+                  .AppendLine()
+                  .Append('E')
+                  .AppendLine();
+            }
+            return sb.ToString();
         }
-        public async Task DeParseAsync(SimaiFile simaiFile, string path)
+        public void Deparse(SimaiFile simaiFile, Stream stream)
         {
-            var fumen = await DeParseAsStringAsync(simaiFile);
-            await File.WriteAllTextAsync(path, fumen);
+            Deparse(simaiFile, stream, Encoding.UTF8);
+        }
+        public void Deparse(SimaiFile simaiFile, Stream stream, Encoding encoding)
+        {
+            var fumen = Deparse(simaiFile);
+            using var writer = new StreamWriter(stream, encoding);
+            writer.Write(fumen);
+        }
+        public Task<string> DeparseAsync(SimaiFile simaiFile)
+        {
+            return Task.Run(() => Deparse(simaiFile));
+        }
+        public async Task DeparseAsync(SimaiFile simaiFile, Stream stream)
+        {
+            await DeparseAsync(simaiFile, stream, Encoding.UTF8);
+        }
+        public async Task DeparseAsync(SimaiFile simaiFile, Stream stream, Encoding encoding)
+        {
+            var fumen = await DeparseAsync(simaiFile);
+            using var writer = new StreamWriter(stream, encoding);
+            await writer.WriteAsync(fumen);
         }
     }
 }

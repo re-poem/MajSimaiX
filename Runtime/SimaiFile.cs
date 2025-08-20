@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.IO;
 using System.Text;
 namespace MajSimai
 {
@@ -9,35 +10,55 @@ namespace MajSimai
         public string Title { get; set; }
         public string Artist { get; set; }
         public float Offset { get; set; }
-        public SimaiChart[] Charts { get; set; }
-        public string[] RawCharts { get; set; }
-        public SimaiCommand[] Commands { get; set; }
+        public SimaiChart[] Charts
+        {
+            get
+            {
+                return _charts;
+            }
+        }
+        public IList<SimaiCommand> Commands
+        {
+            get
+            {
+                return _commands;
+            }
+        }
 
-        public SimaiFile(string path, string title, string artist, float offset, SimaiChart[] levels, string[] fumens, SimaiCommand[] commands)
+        readonly SimaiChart[] _charts = new SimaiChart[7];
+        readonly List<SimaiCommand> _commands = new List<SimaiCommand>();
+
+        public SimaiFile(string path, 
+                         string title, 
+                         string artist, 
+                         float offset, 
+                         IEnumerable<SimaiChart>? levels, IEnumerable<SimaiCommand>? commands)
         {
             if (levels is null)
             {
                 throw new ArgumentNullException(nameof(levels));
             }
-            if (fumens is null)
+            if(commands is null)
             {
-                throw new ArgumentNullException(nameof(fumens));
+                throw new ArgumentNullException(nameof(commands));
             }
-            if (levels.Length != 7)
+            if (!string.IsNullOrEmpty(path) && !File.Exists(path))
             {
-                throw new ArgumentException("The length of parameter \"levels\" must be 7");
-            }
-            if (fumens.Length != 7)
-            {
-                throw new ArgumentException("The length of parameter \"fumens\" must be 7");
+                throw new FileNotFoundException();
             }
             Path = path;
-            Title = title;
-            Artist = artist;
+            Title = title ?? string.Empty;
+            Artist = artist ?? string.Empty;
             Offset = offset;
-            Charts = levels;
-            RawCharts = fumens;
-            Commands = commands;
+
+            var i = 0;
+            Array.Fill(_charts, SimaiChart.Empty);
+            foreach (var c in levels ?? Array.Empty<SimaiChart>())
+            {
+                _charts[i++] = c;
+            }
+            i = 0;
+            _commands.AddRange(commands ?? Array.Empty<SimaiCommand>());
         }
         public static SimaiFile Empty(string title, string artist)
         {
@@ -62,7 +83,7 @@ namespace MajSimai
                 string.Empty
             };
 
-            return new SimaiFile(string.Empty, title, artist, 0, emptyCharts, emptyFumens, Array.Empty<SimaiCommand>());
+            return new SimaiFile(string.Empty, title, artist, 0, emptyCharts, Array.Empty<SimaiCommand>());
         }
     }
 }
