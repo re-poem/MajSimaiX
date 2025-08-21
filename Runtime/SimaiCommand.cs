@@ -33,6 +33,20 @@ namespace MajSimai
         {
             return _hashCode;
         }
+        public static bool TryParse(ReadOnlySpan<char> content, out SimaiCommand cmd)
+        {
+            var index = content.IndexOf('=');
+            if (index == -1)
+            {
+                cmd = default;
+                return false;
+            }
+            var prefixStr = content.Slice(1, index - 1).Trim();
+            var valueStr = content.Slice(index + 1).Trim();
+
+            cmd = new SimaiCommand(new string(prefixStr),new string(valueStr));
+            return true;
+        }
         public static bool operator ==(SimaiCommand left, SimaiCommand right)
         {
             return left._hashCode == right._hashCode;

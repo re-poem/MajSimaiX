@@ -123,5 +123,51 @@ namespace MajSimai
                 ArrayPool<SimaiCommand>.Shared.Return(buffer);
             }
         }
+        public SimaiMetadata(string title, string artist, float offset,
+                             ReadOnlySpan<string> designers,
+                             ReadOnlySpan<string> levels,
+                             ReadOnlySpan<string> fumens,
+                             ReadOnlySpan<SimaiCommand> commands,
+                             string hash)
+        {
+            if (hash is null)
+            {
+                throw new ArgumentNullException(nameof(hash));
+            }
+            if (hash.Length == 0)
+            {
+                throw new ArgumentException(nameof(hash));
+            }
+            Title = title;
+            Artist = artist;
+            Offset = offset;
+            _designers = new string[7];
+            _levels = new string[7];
+            _fumens = new string[7];
+            _commands = Array.Empty<SimaiCommand>();
+            Hash = hash;
+
+            if(designers.Length > 7)
+            {
+                designers = designers.Slice(0, 7);
+            }
+            if (levels.Length > 7)
+            {
+                levels = levels.Slice(0, 7);
+            }
+            if (fumens.Length > 7)
+            {
+                fumens = fumens.Slice(0, 7);
+            }
+            designers.CopyTo(_designers);
+            levels.CopyTo(_levels);
+            fumens.CopyTo(_fumens);
+
+            if (commands.Length != 0)
+            {
+                commands = new SimaiCommand[commands.Length];
+                commands.CopyTo(_commands);
+            }
+        }
     }
 }

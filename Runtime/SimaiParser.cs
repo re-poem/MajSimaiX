@@ -1,6 +1,9 @@
-﻿using System;
+﻿using MajSimai.Runtime.Utils;
+using System;
+using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
+using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -266,106 +269,140 @@ namespace MajSimai
             });
         }
 
-        private async Task<SimaiMetadata> ReadMetadataAsync(string content)
+        private Task<SimaiMetadata> ReadMetadataAsync(string content)
         {
-            return await Task.Run(async () =>
+            return Task.Run(() => ReadMetadata(content));
+        }
+        public SimaiMetadata ReadMetadata(string content)
+        {
+            var title = string.Empty;
+            var artist = string.Empty;
+            var designer = string.Empty;
+            var first = 0f;
+            var rentedArrayForDesigners = ArrayPool<string>.Shared.Rent(7);
+            var rentedArrayForFumens = ArrayPool<string>.Shared.Rent(7);
+            var rentedArrayForLevels = ArrayPool<string>.Shared.Rent(7);
+
+            var designers = rentedArrayForDesigners.AsSpan(0, 7);
+            var fumens = rentedArrayForFumens.AsSpan(0, 7);
+            var levels = rentedArrayForLevels.AsSpan(0, 7);
+            var commands = ArrayPool<SimaiCommand>.Shared.Rent(16);
+            var cI = 0;// for commands
+            var i = 0;
+            try
             {
-                var title = "";
-                var artist = "";
-                var designer = "";
-                var first = 0f;
-                var designers = new string[7];
-                var fumens = new string[7];
-                var levels = new string[7];
-                var i = 0;
-                List<SimaiCommand> commands = new List<SimaiCommand>();
-                try
+                var maidataTxt = content.Split("\n");
+                for (i = 0; i < maidataTxt.Length; i++)
                 {
-                    var maidataTxt = content.Split("\n");
-                    for (i = 0; i < maidataTxt.Length; i++)
+                    if (maidataTxt[i].StartsWith("&title="))
                     {
-                        if (maidataTxt[i].StartsWith("&title="))
-                            title = GetValue(maidataTxt[i]);
-                        else if (maidataTxt[i].StartsWith("&artist="))
-                            artist = GetValue(maidataTxt[i]);
-                        else if (maidataTxt[i].StartsWith("&des"))
+                        title = GetValue(maidataTxt[i]);
+                    }
+                    else if (maidataTxt[i].StartsWith("&artist="))
+                    {
+                        artist = GetValue(maidataTxt[i]);
+                    }
+                    else if (maidataTxt[i].StartsWith("&des"))
+                    {
+                        if (maidataTxt[i].StartsWith("&des="))
                         {
-                            if (maidataTxt[i].StartsWith("&des="))
+                            designer = GetValue(maidataTxt[i]);
+                        }
+                        else
+                        {
+                            for (var j = 0; j < 7; j++)
                             {
-                                designer = GetValue(maidataTxt[i]);
+                                if (maidataTxt[i].StartsWith($"&des_{j + 1}="))
+                                    designers[j] = GetValue(maidataTxt[i]);
                             }
-                            else
-                            {
-                                for (var j = 0; j < 7; j++)
-                                {
-                                    if (maidataTxt[i].StartsWith($"&des_{j + 1}="))
-                                        designers[j] = GetValue(maidataTxt[i]);
-                                }
-                            }
+                        }
 
-                        }
-                        else if (maidataTxt[i].StartsWith("&first="))
+                    }
+                    else if (maidataTxt[i].StartsWith("&first="))
+                    {
+                        if (!float.TryParse(GetValue(maidataTxt[i]), out first))
                         {
-                            if (!float.TryParse(GetValue(maidataTxt[i]), out first))
-                            {
-                                first = 0;
-                            }
-                        }
-                        else if (maidataTxt[i].StartsWith("&lv_") || maidataTxt[i].StartsWith("&inote_"))
-                        {
-                            for (var j = 1; j < 8 && i < maidataTxt.Length; j++)
-                            {
-                                if (maidataTxt[i].StartsWith("&lv_" + j + "="))
-                                    levels[j - 1] = GetValue(maidataTxt[i]);
-                                if (maidataTxt[i].StartsWith("&inote_" + j + "="))
-                                {
-                                    var TheNote = "";
-                                    TheNote += GetValue(maidataTxt[i]) + "\n";
-                                    i++;
-                                    for (; i < maidataTxt.Length; i++)
-                                    {
-                                        if (i < maidataTxt.Length)
-                                            if (maidataTxt[i].StartsWith("&"))
-                                                break;
-                                        TheNote += maidataTxt[i] + "\n";
-                                    }
-
-                                    fumens[j - 1] = TheNote.Trim();
-                                }
-                            }
-                        }
-                        else if (maidataTxt[i].StartsWith("&"))
-                        {
-                            if (!maidataTxt[i].Contains("="))
-                                throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt[i]);
-                            var a = maidataTxt[i].Split("=");
-                            var prefix = a[0][1..];
-                            var value = a[1];
-                            commands.Add(new SimaiCommand(prefix, value));
+                            first = 0;
                         }
                     }
-                    for (var j = 0; j < 7; j++)
-                        designers[j] ??= designer;
-                    return new SimaiMetadata(title, 
-                                             artist, 
-                                             first, 
-                                             designers,
-                                             levels, 
-                                             fumens, 
-                                             commands.ToArray(), 
-                                             await ComputeHashAsBase64StringAsync(Encoding.UTF8.GetBytes(content)));
+                    else if (maidataTxt[i].StartsWith("&lv_") || maidataTxt[i].StartsWith("&inote_"))
+                    {
+                        for (var j = 1; j < 8 && i < maidataTxt.Length; j++)
+                        {
+                            if (maidataTxt[i].StartsWith("&lv_" + j + "="))
+                                levels[j - 1] = GetValue(maidataTxt[i]);
+                            if (maidataTxt[i].StartsWith("&inote_" + j + "="))
+                            {
+                                var TheNote = "";
+                                TheNote += GetValue(maidataTxt[i]) + "\n";
+                                i++;
+                                for (; i < maidataTxt.Length; i++)
+                                {
+                                    if (i < maidataTxt.Length)
+                                        if (maidataTxt[i].StartsWith("&"))
+                                            break;
+                                    TheNote += maidataTxt[i] + "\n";
+                                }
+
+                                fumens[j - 1] = TheNote.Trim();
+                            }
+                        }
+                    }
+                    else if (maidataTxt[i].StartsWith("&"))
+                    {
+                        if (!maidataTxt[i].Contains("="))
+                            throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt[i]);
+                        var a = maidataTxt[i].Split("=");
+                        var prefix = a[0][1..];
+                        var value = a[1];
+                        BufferHelper.EnsureBufferLength(cI + 1, ref commands);
+                        commands[i++] = new SimaiCommand(prefix, value);
+                    }
                 }
-                catch(InvalidSimaiMarkupException)
+                for (var j = 0; j < 7; j++)
                 {
-                    throw;
+                    designers[j] ??= designer;
                 }
-                catch (Exception e)
-                {
-                    throw new InvalidSimaiMarkupException(i + 1, 0, "在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
-                }
-            });
+                return new SimaiMetadata(title,
+                                         artist,
+                                         first,
+                                         designers,
+                                         levels,
+                                         fumens,
+                                         commands.AsSpan(0, cI),
+                                         MD5Helper.ComputeHashAsBase64String(Encoding.UTF8.GetBytes(content)));
+            }
+            catch (InvalidSimaiMarkupException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new InvalidSimaiMarkupException(i + 1, 0, "在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
+            }
+            finally
+            {
+                ArrayPool<string>.Shared.Return(rentedArrayForDesigners);
+                ArrayPool<string>.Shared.Return(rentedArrayForFumens);
+                ArrayPool<string>.Shared.Return(rentedArrayForLevels);
+                ArrayPool<SimaiCommand>.Shared.Return(commands);
+            }
         }
-        private string GetValue(string varline) => varline.Substring(varline.IndexOf("=") + 1).Trim();
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string GetValue(string varline)
+        {
+            return varline.Substring(varline.IndexOf("=") + 1).Trim();
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ReadOnlySpan<char> GetValue(ReadOnlySpan<char> varline)
+        {
+            var index = varline.IndexOf('=');
+            if (index == -1)
+            {
+                return ReadOnlySpan<char>.Empty;
+            }
+            return varline.Slice(index + 1).Trim();
+        }
         private static bool IsNote(char noteText)
         {
             var SlideMarks = "1234567890ABCDE"; ///ABCDE for touch
@@ -373,17 +410,6 @@ namespace MajSimai
                 if (noteText == mark)
                     return true;
             return false;
-        }
-        private static async Task<byte[]> ComputeHashAsync(byte[] data)
-        {
-            using var md5 = MD5.Create();
-            return await Task.Run(() => md5.ComputeHash(data));
-        }
-        private static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
-        {
-            var hash = await ComputeHashAsync(data);
-
-            return Convert.ToBase64String(hash);
         }
 
         //Note: this method only deparse RawChart
@@ -472,6 +498,36 @@ namespace MajSimai
             var fumen = await DeparseAsync(simaiFile);
             using var writer = new StreamWriter(stream, encoding);
             await writer.WriteAsync(fumen);
+        }
+
+        static class MD5Helper
+        {
+            public static byte[] ComputeHash(byte[] data)
+            {
+                using (var md5 = MD5.Create())
+                {
+                    return md5.ComputeHash(data);
+                }
+            }
+            public static string ComputeHashAsBase64String(byte[] data)
+            {
+                var hash = ComputeHash(data);
+
+                return Convert.ToBase64String(hash);
+            }
+            public static async Task<byte[]> ComputeHashAsync(byte[] data)
+            {
+                using (var md5 = MD5.Create())
+                {
+                    return await Task.Run(() => md5.ComputeHash(data));
+                }
+            }
+            public static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
+            {
+                var hash = await ComputeHashAsync(data);
+
+                return Convert.ToBase64String(hash);
+            }
         }
     }
 }
