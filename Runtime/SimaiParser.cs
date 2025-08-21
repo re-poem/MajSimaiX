@@ -12,6 +12,10 @@ namespace MajSimai
 {
     public static class SimaiParser
     {
+        public static SimaiFile Parse(string filePath)
+        {
+            return ParseAsync(filePath).Result;
+        }
         public static async Task<SimaiFile> ParseAsync(string filePath)
         {
             if (!File.Exists(filePath))
@@ -22,7 +26,7 @@ namespace MajSimai
             await fileStream.CopyToAsync(memoryBuffer);
 
             var fileContent = Encoding.UTF8.GetString(memoryBuffer.ToArray());
-            var metadata = await ReadMetadataAsync(fileContent);
+            var metadata = await ParseMetadataAsync(fileContent);
 
             SimaiChart[] charts = new SimaiChart[7];
             Task<SimaiChart>[] tasks = new Task<SimaiChart>[7];
@@ -60,28 +64,331 @@ namespace MajSimai
 
             return simaiFile;
         }
-        public static async Task<SimaiMetadata> ParseMetadataAsync(string filePath)
+        
+        public static SimaiMetadata ParseMetadata(ReadOnlySpan<char> content)
         {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException($"\"{filePath}\" could not be found");
+            static void SetValue(ReadOnlySpan<char> kvStr, ref string valueStr)
+            {
+                if (!string.IsNullOrEmpty(valueStr))
+                {
+                    return;
+                }
+                var value = SimaiParser.GetValue(kvStr);
+                if (value.Length == 0)
+                {
+                    return;
+                }
+                valueStr = new string(value);
+            }
+            var title = string.Empty;
+            var artist = string.Empty;
+            var designer = string.Empty;
+            var first = 0f;
+            var rentedArrayForDesigners = ArrayPool<string>.Shared.Rent(7);
+            var rentedArrayForFumens = ArrayPool<string>.Shared.Rent(7);
+            var rentedArrayForLevels = ArrayPool<string>.Shared.Rent(7);
 
-            using var fileStream = File.OpenRead(filePath);
-            using var memoryBuffer = new MemoryStream();
-            await fileStream.CopyToAsync(memoryBuffer);
+            var designers = rentedArrayForDesigners.AsSpan(0, 7);
+            var fumens = rentedArrayForFumens.AsSpan(0, 7);
+            var levels = rentedArrayForLevels.AsSpan(0, 7);
+            var commands = ArrayPool<SimaiCommand>.Shared.Rent(16);
+            var cI = 0;// for commands
+            var i = 0;
+            try
+            {
+                designers.Fill(string.Empty);
+                fumens.Fill(string.Empty);
+                levels.Fill(string.Empty);
 
-            var fileContent = Encoding.UTF8.GetString(memoryBuffer.ToArray());
-            var metadata = await ReadMetadataAsync(fileContent);
+                var lineCount = content.Count('\n') + 1;
+                Span<Range> ranges = stackalloc Range[lineCount];
+                lineCount = content.Split(ranges, '\n');
+                ranges = ranges.Slice(0, lineCount);
+                for (i = 0; i < lineCount; i++)
+                {
+                    var range = ranges[i];
+                    var maidataTxt = content[range].Trim();
+                    if (maidataTxt.IsEmpty)
+                    {
+                        continue;
+                    }
 
-            return metadata;
+                    if (maidataTxt.StartsWith("&title="))
+                    {
+                        SetValue(maidataTxt, ref title);
+                    }
+                    else if (maidataTxt.StartsWith("&artist="))
+                    {
+                        SetValue(maidataTxt, ref artist);
+                    }
+                    else if (maidataTxt.StartsWith("&des"))
+                    {
+                        if (maidataTxt.StartsWith("&des="))
+                        {
+                            SetValue(maidataTxt, ref designer);
+                        }
+                        else
+                        {
+                            const string DES_1_STRING = "&des_1=";
+                            const string DES_2_STRING = "&des_2=";
+                            const string DES_3_STRING = "&des_3=";
+                            const string DES_4_STRING = "&des_4=";
+                            const string DES_5_STRING = "&des_5=";
+                            const string DES_6_STRING = "&des_6=";
+                            const string DES_7_STRING = "&des_7=";
+                            for (var j = 0; j < 7; j++)
+                            {
+                                var desPrefix = j switch
+                                {
+                                    0 => DES_1_STRING,
+                                    1 => DES_2_STRING,
+                                    2 => DES_3_STRING,
+                                    3 => DES_4_STRING,
+                                    4 => DES_5_STRING,
+                                    5 => DES_6_STRING,
+                                    6 => DES_7_STRING,
+                                    _ => throw new ArgumentOutOfRangeException()
+                                };
+                                if (maidataTxt.StartsWith(desPrefix))
+                                {
+                                    SetValue(maidataTxt, ref designers[j]);
+                                }
+                            }
+                        }
+
+                    }
+                    else if (maidataTxt.StartsWith("&first="))
+                    {
+                        if (!float.TryParse(GetValue(maidataTxt), out first))
+                        {
+                            first = 0;
+                        }
+                    }
+                    else if (maidataTxt.StartsWith("&lv_"))
+                    {
+                        const string LV_1_STRING = "&lv_1=";
+                        const string LV_2_STRING = "&lv_2=";
+                        const string LV_3_STRING = "&lv_3=";
+                        const string LV_4_STRING = "&lv_4=";
+                        const string LV_5_STRING = "&lv_5=";
+                        const string LV_6_STRING = "&lv_6=";
+                        const string LV_7_STRING = "&lv_7=";
+                        for (var j = 1; j < 8; j++)
+                        {
+                            var lvPrefix = j switch
+                            {
+                                1 => LV_1_STRING,
+                                2 => LV_2_STRING,
+                                3 => LV_3_STRING,
+                                4 => LV_4_STRING,
+                                5 => LV_5_STRING,
+                                6 => LV_6_STRING,
+                                7 => LV_7_STRING,
+                                _ => throw new ArgumentOutOfRangeException()
+                            };
+                            if (maidataTxt.StartsWith(lvPrefix))
+                            {
+                                SetValue(maidataTxt, ref levels[j - 1]);
+                            }
+                        }
+                    }
+                    else if (maidataTxt.StartsWith("&inote_"))
+                    {
+                        const string INOTE_1_STRING = "&inote_1=";
+                        const string INOTE_2_STRING = "&inote_2=";
+                        const string INOTE_3_STRING = "&inote_3=";
+                        const string INOTE_4_STRING = "&inote_4=";
+                        const string INOTE_5_STRING = "&inote_5=";
+                        const string INOTE_6_STRING = "&inote_6=";
+                        const string INOTE_7_STRING = "&inote_7=";
+
+                        for (var j = 1; j < 8; j++)
+                        {
+                            var inotePrefix = j switch
+                            {
+                                1 => INOTE_1_STRING,
+                                2 => INOTE_2_STRING,
+                                3 => INOTE_3_STRING,
+                                4 => INOTE_4_STRING,
+                                5 => INOTE_5_STRING,
+                                6 => INOTE_6_STRING,
+                                7 => INOTE_7_STRING,
+                                _ => throw new ArgumentOutOfRangeException()
+                            };
+                            if (maidataTxt.StartsWith(inotePrefix))
+                            {
+                                var buffer = ArrayPool<char>.Shared.Rent(32);
+                                try
+                                {
+                                    Array.Clear(buffer, 0, buffer.Length);
+                                    var bufferIndex = 0;
+                                    var value = GetValue(maidataTxt);
+                                    BufferHelper.EnsureBufferLength(value.Length + 1, ref buffer);
+                                    value.CopyTo(buffer);
+                                    bufferIndex += value.Length;
+                                    buffer[bufferIndex++] = '\n';
+                                    i++;
+                                    for (; i < lineCount; i++)
+                                    {
+                                        range = ranges[i];
+                                        maidataTxt = content[range].Trim();
+                                        if (maidataTxt.IsEmpty)
+                                        {
+                                            continue;
+                                        }
+                                        else if (maidataTxt[0] == '&')
+                                        {
+                                            break;
+                                        }
+                                        for (var i2 = 0; i2 < maidataTxt.Length; i2++)
+                                        {
+                                            ref readonly var current = ref maidataTxt[i2];
+                                            if (current == 'E')
+                                            {
+                                                break;
+                                            }
+                                            BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
+                                            buffer[bufferIndex++] = current;
+                                        }
+                                        BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
+                                        buffer[bufferIndex++] = '\n';
+                                    }
+
+                                    fumens[j - 1] = new string(buffer.AsSpan(0, bufferIndex).Trim());
+                                }
+                                finally
+                                {
+                                    ArrayPool<char>.Shared.Return(buffer);
+                                }
+                            }
+                        }
+                    }
+                    else if (maidataTxt.StartsWith("&"))
+                    {
+                        if (!maidataTxt.Contains('=') || !SimaiCommand.TryParse(maidataTxt, out var cmd))
+                        {
+                            throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt.ToString());
+                        }
+                        BufferHelper.EnsureBufferLength(cI + 1, ref commands);
+                        commands[i++] = cmd;
+                    }
+                }
+
+
+                if (!string.IsNullOrEmpty(designer))
+                {
+                    for (var j = 0; j < 7; j++)
+                    {
+                        ref var d = ref designers[j];
+                        if (string.IsNullOrEmpty(d))
+                        {
+                            d = designer;
+                        }
+                    }
+                }
+                var encoding = Encoding.UTF8;
+                var byteCount = encoding.GetByteCount(content);
+                var bytes = new byte[byteCount];
+                encoding.GetBytes(content, bytes);
+                return new SimaiMetadata(title,
+                                         artist,
+                                         first,
+                                         designers,
+                                         levels,
+                                         fumens,
+                                         commands.AsSpan(0, cI),
+                                         MD5Helper.ComputeHashAsBase64String(bytes));
+            }
+            catch (InvalidSimaiMarkupException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new InvalidSimaiMarkupException(i + 1, 0, "在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
+            }
+            finally
+            {
+                ArrayPool<string>.Shared.Return(rentedArrayForDesigners);
+                ArrayPool<string>.Shared.Return(rentedArrayForFumens);
+                ArrayPool<string>.Shared.Return(rentedArrayForLevels);
+                ArrayPool<SimaiCommand>.Shared.Return(commands);
+            }
         }
-        public static SimaiFile Parse(string filePath)
+        public static SimaiMetadata ParseMetadata(Stream contentStream)
         {
-            return ParseAsync(filePath).Result;
+            return ParseMetadata(contentStream, Encoding.UTF8);
         }
-        public static SimaiMetadata ParseMetadata(string filePath)
+        public static SimaiMetadata ParseMetadata(Stream contentStream, Encoding encoding)
         {
-            return ParseMetadataAsync(filePath).Result;
+            using (var decodeStream = new StreamReader(contentStream, encoding))
+            {
+                var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
+                try
+                {
+                    var read = 0;
+                    Span<char> buffer = stackalloc char[4096];
+                    while (!decodeStream.EndOfStream)
+                    {
+                        var currentRead = decodeStream.Read(buffer);
+                        if (currentRead == 0)
+                        {
+                            continue;
+                        }
+                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
+                        read += currentRead;
+                    }
+                    return ParseMetadata(contentBuffer.AsSpan(read));
+                }
+                finally
+                {
+                    ArrayPool<char>.Shared.Return(contentBuffer);
+                }
+            }
         }
+        public static Task<SimaiMetadata> ParseMetadataAsync(string content)
+        {
+            return Task.Run(() => ParseMetadata(content));
+        }
+        public static Task<SimaiMetadata> ParseMetadataAsync(ReadOnlyMemory<char> content)
+        {
+            return Task.Run(() => ParseMetadata(content.Span));
+        }
+        public static Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream)
+        {
+            return ParseMetadataAsync(contentStream, Encoding.UTF8);
+        }
+        public static async Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream, Encoding encoding)
+        {
+            using (var decodeStream = new StreamReader(contentStream, encoding))
+            {
+                var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
+                var buffer = ArrayPool<char>.Shared.Rent(4096);
+                try
+                {
+                    var read = 0;
+                    while (!decodeStream.EndOfStream)
+                    {
+                        var currentRead = await decodeStream.ReadAsync(buffer);
+                        if (currentRead == 0)
+                        {
+                            continue;
+                        }
+                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        Array.Copy(buffer, 0, contentBuffer, read, currentRead);
+                        read += currentRead;
+                    }
+                    return await ParseMetadataAsync(contentBuffer.AsMemory(read));
+                }
+                finally
+                {
+                    ArrayPool<char>.Shared.Return(contentBuffer);
+                    ArrayPool<char>.Shared.Return(buffer);
+                }
+            }
+        }
+
         public static async Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
         {
             return await Task.Run(async () =>
@@ -204,7 +511,7 @@ namespace MajSimai
 
                             if (!float.TryParse(hs_s, out curHSpeed))
                             {
-                                throw new InvalidSimaiMarkupException(Ycount,Xcount, hs_s, "HSpeed value must be a number");
+                                throw new InvalidSimaiMarkupException(Ycount, Xcount, hs_s, "HSpeed value must be a number");
                             }
                             //Console.WriteLine("HS" + curHSpeed);
                             continue;
@@ -239,7 +546,7 @@ namespace MajSimai
                                 noteTemp = "";
                             }
 
-                            commaTimingList.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm, 1,i));
+                            commaTimingList.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm, 1, i));
 
 
                             time += 1d / (bpm / 60d) * 4d / beats;
@@ -266,261 +573,6 @@ namespace MajSimai
                     throw new Exception("Error at " + Ycount + "," + Xcount + "\n" + e.Message);
                 }
             });
-        }
-
-        public static Task<SimaiMetadata> ReadMetadataAsync(string content)
-        {
-            return Task.Run(() => ReadMetadata(content));
-        }
-        public static SimaiMetadata ReadMetadata(ReadOnlySpan<char> content)
-        {
-            static void SetValue(ReadOnlySpan<char> kvStr, ref string valueStr)
-            {
-                if (!string.IsNullOrEmpty(valueStr))
-                {
-                    return;
-                }
-                var value = SimaiParser.GetValue(kvStr);
-                if (value.Length == 0)
-                {
-                    return;
-                }
-                valueStr = new string(value);
-            }
-            var title = string.Empty;
-            var artist = string.Empty;
-            var designer = string.Empty;
-            var first = 0f;
-            var rentedArrayForDesigners = ArrayPool<string>.Shared.Rent(7);
-            var rentedArrayForFumens = ArrayPool<string>.Shared.Rent(7);
-            var rentedArrayForLevels = ArrayPool<string>.Shared.Rent(7);
-
-            var designers = rentedArrayForDesigners.AsSpan(0, 7);
-            var fumens = rentedArrayForFumens.AsSpan(0, 7);
-            var levels = rentedArrayForLevels.AsSpan(0, 7);
-            var commands = ArrayPool<SimaiCommand>.Shared.Rent(16);
-            var cI = 0;// for commands
-            var i = 0;
-            try
-            {
-                designers.Fill(string.Empty);
-                fumens.Fill(string.Empty);
-                levels.Fill(string.Empty);
-
-                var lineCount = content.Count('\n') + 1;
-                Span<Range> ranges = stackalloc Range[lineCount];
-                lineCount = content.Split(ranges, '\n');
-                ranges = ranges.Slice(0, lineCount);
-                for (i = 0; i < lineCount; i++)
-                {
-                    var range = ranges[i];
-                    var maidataTxt = content[range].Trim();
-                    if (maidataTxt.IsEmpty)
-                    {
-                        continue;
-                    }
-
-                    if (maidataTxt.StartsWith("&title="))
-                    {
-                        SetValue(maidataTxt, ref title);
-                    }
-                    else if (maidataTxt.StartsWith("&artist="))
-                    {
-                        SetValue(maidataTxt, ref artist);
-                    }
-                    else if (maidataTxt.StartsWith("&des"))
-                    {
-                        if (maidataTxt.StartsWith("&des="))
-                        {
-                            SetValue(maidataTxt, ref designer);
-                        }
-                        else
-                        {
-                            const string DES_1_STRING = "&des_1=";
-                            const string DES_2_STRING = "&des_2=";
-                            const string DES_3_STRING = "&des_3=";
-                            const string DES_4_STRING = "&des_4=";
-                            const string DES_5_STRING = "&des_5=";
-                            const string DES_6_STRING = "&des_6=";
-                            const string DES_7_STRING = "&des_7=";
-                            for (var j = 0; j < 7; j++)
-                            {
-                                var desPrefix = j switch
-                                {
-                                    0 => DES_1_STRING,
-                                    1 => DES_2_STRING,
-                                    2 => DES_3_STRING,
-                                    3 => DES_4_STRING,
-                                    4 => DES_5_STRING,
-                                    5 => DES_6_STRING,
-                                    6 => DES_7_STRING,
-                                    _ => throw new ArgumentOutOfRangeException()
-                                };
-                                if(maidataTxt.StartsWith(desPrefix))
-                                {
-                                    SetValue(maidataTxt, ref designers[j]);
-                                }
-                            }
-                        }
-
-                    }
-                    else if (maidataTxt.StartsWith("&first="))
-                    {
-                        if (!float.TryParse(GetValue(maidataTxt), out first))
-                        {
-                            first = 0;
-                        }
-                    }
-                    else if (maidataTxt.StartsWith("&lv_"))
-                    {
-                        const string LV_1_STRING = "&lv_1=";
-                        const string LV_2_STRING = "&lv_2=";
-                        const string LV_3_STRING = "&lv_3=";
-                        const string LV_4_STRING = "&lv_4=";
-                        const string LV_5_STRING = "&lv_5=";
-                        const string LV_6_STRING = "&lv_6=";
-                        const string LV_7_STRING = "&lv_7=";
-                        for (var j = 1; j < 8; j++)
-                        {
-                            var lvPrefix = j switch
-                            {
-                                1 => LV_1_STRING,
-                                2 => LV_2_STRING,
-                                3 => LV_3_STRING,
-                                4 => LV_4_STRING,
-                                5 => LV_5_STRING,
-                                6 => LV_6_STRING,
-                                7 => LV_7_STRING,
-                                _ => throw new ArgumentOutOfRangeException()
-                            };
-                            if (maidataTxt.StartsWith(lvPrefix))
-                            {
-                                SetValue(maidataTxt, ref levels[j - 1]);
-                            }
-                        }
-                    }
-                    else if (maidataTxt.StartsWith("&inote_"))
-                    {
-                        const string INOTE_1_STRING = "&inote_1=";
-                        const string INOTE_2_STRING = "&inote_2=";
-                        const string INOTE_3_STRING = "&inote_3=";
-                        const string INOTE_4_STRING = "&inote_4=";
-                        const string INOTE_5_STRING = "&inote_5=";
-                        const string INOTE_6_STRING = "&inote_6=";
-                        const string INOTE_7_STRING = "&inote_7=";
-
-                        for (var j = 1; j < 8; j++)
-                        {
-                            var inotePrefix = j switch
-                            {
-                                1 => INOTE_1_STRING,
-                                2 => INOTE_2_STRING,
-                                3 => INOTE_3_STRING,
-                                4 => INOTE_4_STRING,
-                                5 => INOTE_5_STRING,
-                                6 => INOTE_6_STRING,
-                                7 => INOTE_7_STRING,
-                                _ => throw new ArgumentOutOfRangeException()
-                            };
-                            if (maidataTxt.StartsWith(inotePrefix))
-                            {
-                                var buffer = ArrayPool<char>.Shared.Rent(32);
-                                try
-                                {
-                                    Array.Clear(buffer, 0, buffer.Length);
-                                    var bufferIndex = 0;
-                                    var value = GetValue(maidataTxt);
-                                    BufferHelper.EnsureBufferLength(value.Length + 1, ref buffer);
-                                    value.CopyTo(buffer);
-                                    bufferIndex += value.Length;
-                                    buffer[bufferIndex++] = '\n';
-                                    i++;
-                                    for (; i < lineCount; i++)
-                                    {
-                                        range = ranges[i];
-                                        maidataTxt = content[range].Trim();
-                                        if(maidataTxt.IsEmpty)
-                                        {
-                                            continue;
-                                        }
-                                        else if (maidataTxt[0] == '&')
-                                        {
-                                            break;
-                                        }
-                                        for (var i2 = 0; i2 < maidataTxt.Length; i2++)
-                                        {
-                                            ref readonly var current = ref maidataTxt[i2];
-                                            if(current == 'E')
-                                            {
-                                                break;
-                                            }
-                                            BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
-                                            buffer[bufferIndex++] = current;
-                                        }
-                                        BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
-                                        buffer[bufferIndex++] = '\n';
-                                    }
-
-                                    fumens[j - 1] = new string(buffer.AsSpan(0, bufferIndex).Trim());
-                                }
-                                finally
-                                {
-                                    ArrayPool<char>.Shared.Return(buffer);
-                                }
-                            }
-                        }
-                    }
-                    else if (maidataTxt.StartsWith("&"))
-                    {
-                        if (!maidataTxt.Contains('=') || !SimaiCommand.TryParse(maidataTxt, out var cmd))
-                        {
-                            throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt.ToString());
-                        }
-                        BufferHelper.EnsureBufferLength(cI + 1, ref commands);
-                        commands[i++] = cmd;
-                    }
-                }
-
-                
-                if(!string.IsNullOrEmpty(designer))
-                {
-                    for (var j = 0; j < 7; j++)
-                    {
-                        ref var d = ref designers[j];
-                        if (string.IsNullOrEmpty(d))
-                        {
-                            d = designer;
-                        }
-                    }
-                }
-                var encoding = Encoding.UTF8;
-                var byteCount = encoding.GetByteCount(content);
-                var bytes = new byte[byteCount];
-                encoding.GetBytes(content, bytes);
-                return new SimaiMetadata(title,
-                                         artist,
-                                         first,
-                                         designers,
-                                         levels,
-                                         fumens,
-                                         commands.AsSpan(0, cI),
-                                         MD5Helper.ComputeHashAsBase64String(bytes));
-            }
-            catch (InvalidSimaiMarkupException)
-            {
-                throw;
-            }
-            catch (Exception e)
-            {
-                throw new InvalidSimaiMarkupException(i + 1, 0, "在maidata.txt第" + (i + 1) + "行:\n" + e.Message + "读取谱面时出现错误");
-            }
-            finally
-            {
-                ArrayPool<string>.Shared.Return(rentedArrayForDesigners);
-                ArrayPool<string>.Shared.Return(rentedArrayForFumens);
-                ArrayPool<string>.Shared.Return(rentedArrayForLevels);
-                ArrayPool<SimaiCommand>.Shared.Return(commands);
-            }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string GetValue(string varline)
