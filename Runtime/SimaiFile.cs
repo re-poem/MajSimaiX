@@ -6,7 +6,6 @@ namespace MajSimai
 {
     public class SimaiFile
     {
-        public string Path { get; }
         public string Title { get; set; }
         public string Artist { get; set; }
         public float Offset { get; set; }
@@ -28,8 +27,7 @@ namespace MajSimai
         readonly SimaiChart[] _charts = new SimaiChart[7];
         readonly List<SimaiCommand> _commands = new List<SimaiCommand>();
 
-        public SimaiFile(string path, 
-                         string title, 
+        public SimaiFile(string title, 
                          string artist, 
                          float offset, 
                          IEnumerable<SimaiChart>? levels, IEnumerable<SimaiCommand>? commands)
@@ -42,11 +40,6 @@ namespace MajSimai
             {
                 throw new ArgumentNullException(nameof(commands));
             }
-            if (!string.IsNullOrEmpty(path) && !File.Exists(path))
-            {
-                throw new FileNotFoundException();
-            }
-            Path = path;
             Title = title ?? string.Empty;
             Artist = artist ?? string.Empty;
             Offset = offset;
@@ -83,7 +76,7 @@ namespace MajSimai
                 string.Empty
             };
 
-            return new SimaiFile(string.Empty, title, artist, 0, emptyCharts, Array.Empty<SimaiCommand>());
+            return new SimaiFile(title, artist, 0, emptyCharts, Array.Empty<SimaiCommand>());
         }
     }
 }

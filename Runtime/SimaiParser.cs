@@ -4,6 +4,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.IO;
 using System.Runtime.CompilerServices;
+using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
 using System.Threading.Tasks;
@@ -12,59 +13,179 @@ namespace MajSimai
 {
     public static class SimaiParser
     {
-        public static SimaiFile Parse(string filePath)
+        #region Parse
+        public static SimaiFile Parse(ReadOnlySpan<char> content)
         {
-            return ParseAsync(filePath).Result;
+
+            var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
+            try
+            {
+
+                var metadata = ParseMetadata(content);
+
+                Parallel.For(0, 7, i =>
+                {
+                    var fumen = metadata.Fumens[i];
+                    var designer = metadata.Designers[i];
+                    var level = metadata.Levels[i];
+                    try
+                    {
+                        rentedArrayForCharts[i] = ParseChart(level, designer, fumen);
+                    }
+                    catch (Exception ex)
+                    {
+                        rentedArrayForCharts[i] = new SimaiChart(metadata.Levels[i], metadata.Designers[i], metadata.Fumens[i], Array.Empty<SimaiTimingPoint>());
+                        Console.WriteLine(ex);
+                    }
+                });
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, rentedArrayForCharts, null);
+                var cmds = simaiFile.Commands;
+                var cmdCount = metadata.Commands.Length;
+                for (var i = 0; i < cmdCount; i++)
+                {
+                    cmds.Add(metadata.Commands[i]);
+                }
+
+                return simaiFile;
+            }
+            finally
+            {
+                ArrayPool<SimaiChart>.Shared.Return(rentedArrayForCharts);
+            }
         }
-        public static async Task<SimaiFile> ParseAsync(string filePath)
+        public static SimaiFile Parse(Stream contentStream)
         {
-            if (!File.Exists(filePath))
-                throw new FileNotFoundException($"\"{filePath}\" could not be found");
-
-            using var fileStream = File.OpenRead(filePath);
-            using var memoryBuffer = new MemoryStream();
-            await fileStream.CopyToAsync(memoryBuffer);
-
-            var fileContent = Encoding.UTF8.GetString(memoryBuffer.ToArray());
-            var metadata = await ParseMetadataAsync(fileContent);
-
-            SimaiChart[] charts = new SimaiChart[7];
-            Task<SimaiChart>[] tasks = new Task<SimaiChart>[7];
-            for (var i = 0; i < 7; i++)
-            {
-                var fumen = metadata.Fumens[i];
-                var designer = metadata.Designers[i];
-                var level = metadata.Levels[i];
-                tasks[i] = ParseChartAsync(level, designer, fumen);
-            }
-            var allTask = Task.WhenAll(tasks);
-            while (!allTask.IsCompleted)
-            {
-                await Task.Yield();
-            }
-            for(var i = 0; i < 7; i++)
-            {
-                var task = tasks[i];
-                if (task.IsFaulted)
-                {
-                    charts[i] = new SimaiChart(metadata.Levels[i], metadata.Designers[i], metadata.Fumens[i], Array.Empty<SimaiTimingPoint>());
-                }
-                else
-                {
-                    charts[i] = task.Result;
-                }
-            }
-            var simaiFile = new SimaiFile(filePath, metadata.Title, metadata.Artist, metadata.Offset, charts, null);
-            var cmds = simaiFile.Commands;
-            var cmdCount = metadata.Commands.Length;
-            for (var i = 0; i < cmdCount; i++)
-            {
-                simaiFile.Commands.Add(metadata.Commands[i]);
-            }
-
-            return simaiFile;
+            return Parse(contentStream, Encoding.UTF8);
         }
-        
+        public static SimaiFile Parse(Stream contentStream, Encoding encoding)
+        {
+            using (var decodeStream = new StreamReader(contentStream, encoding))
+            {
+                var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
+                try
+                {
+                    var read = 0;
+                    Span<char> buffer = stackalloc char[4096];
+                    while (!decodeStream.EndOfStream)
+                    {
+                        var currentRead = decodeStream.Read(buffer);
+                        if (currentRead == 0)
+                        {
+                            continue;
+                        }
+                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
+                        read += currentRead;
+                    }
+                    return Parse(contentBuffer.AsSpan(read));
+                }
+                finally
+                {
+                    ArrayPool<char>.Shared.Return(contentBuffer);
+                }
+            }
+        }
+        public static Task<SimaiFile> ParseAsync(string content)
+        {
+            var buffer = ArrayPool<char>.Shared.Rent(content.Length);
+            try
+            {
+                content.AsSpan().CopyTo(buffer);
+                return ParseAsync(buffer.AsMemory(content.Length));
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(buffer);
+            }
+        }
+        public static async Task<SimaiFile> ParseAsync(ReadOnlyMemory<char> content)
+        {
+            var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
+            var rentedArrayForTasks = ArrayPool<Task<SimaiChart>>.Shared.Rent(7);
+            Array.Fill(rentedArrayForTasks, Task.CompletedTask);
+            try
+            {
+                var metadata = await ParseMetadataAsync(content);
+
+                for (var i = 0; i < 7; i++)
+                {
+                    var fumen = metadata.Fumens[i];
+                    var designer = metadata.Designers[i];
+                    var level = metadata.Levels[i];
+                    rentedArrayForTasks[i] = ParseChartAsync(level, designer, fumen);
+                }
+                var waitAllTask = Task.WhenAll(rentedArrayForTasks);
+                await waitAllTask;
+
+                for (var i = 0; i < 7; i++)
+                {
+                    var task = rentedArrayForTasks[i];
+                    if (task.IsCompletedSuccessfully)
+                    {
+                        rentedArrayForCharts[i] = task.Result;
+                    }
+                    else
+                    {
+                        rentedArrayForCharts[i] = new SimaiChart(metadata.Levels[i], metadata.Designers[i], metadata.Fumens[i], Array.Empty<SimaiTimingPoint>());
+                        if (task.IsFaulted)
+                        {
+                            Console.WriteLine(task.Exception);
+                        }
+                    }
+                }
+
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, rentedArrayForCharts, null);
+                var cmds = simaiFile.Commands;
+                var cmdCount = metadata.Commands.Length;
+                for (var i = 0; i < cmdCount; i++)
+                {
+                    cmds.Add(metadata.Commands[i]);
+                }
+
+                return simaiFile;
+            }
+            finally
+            {
+                ArrayPool<SimaiChart>.Shared.Return(rentedArrayForCharts);
+                ArrayPool<Task<SimaiChart>>.Shared.Return(rentedArrayForTasks);
+            }
+        }
+        public static Task<SimaiFile> ParseAsync(Stream contentStream)
+        {
+            return ParseAsync(contentStream, Encoding.UTF8);
+        }
+        public static async Task<SimaiFile> ParseAsync(Stream contentStream, Encoding encoding)
+        {
+
+            using (var decodeStream = new StreamReader(contentStream, encoding))
+            {
+                var contentBuffer = ArrayPool<char>.Shared.Rent(1024);
+                var buffer = ArrayPool<char>.Shared.Rent(4096);
+                var read = 0;
+                try
+                {
+                    while (!decodeStream.EndOfStream)
+                    {
+                        var currentRead = await decodeStream.ReadAsync(buffer);
+                        if (currentRead == 0)
+                        {
+                            continue;
+                        }
+                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        Array.Copy(buffer, 0, contentBuffer, read, currentRead);
+                        read += currentRead;
+                    }
+                    return await ParseAsync(contentBuffer.AsMemory(0, read));
+                }
+                finally
+                {
+                    ArrayPool<char>.Shared.Return(buffer);
+                    ArrayPool<char>.Shared.Return(contentBuffer);
+                }
+            }
+        }
+        #endregion
+        #region ParseMetadata
         public static SimaiMetadata ParseMetadata(ReadOnlySpan<char> content)
         {
             static void SetValue(ReadOnlySpan<char> kvStr, ref string valueStr)
@@ -388,6 +509,8 @@ namespace MajSimai
                 }
             }
         }
+        #endregion
+        #region ParseChart
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SimaiChart ParseChart(ReadOnlySpan<char> fumen)
         {
@@ -420,7 +543,7 @@ namespace MajSimai
             var beats = 4f; //{4}
             var haveNote = false;
             //var noteTemp = "";
-            
+
             int Ycount = 1, Xcount = 0;
 
             /// Xcount| 1 2 3 4 5 6 7 8 9 10| 
@@ -444,7 +567,7 @@ namespace MajSimai
                     {
                         Xcount++;
                     }
-                    switch(fumen[i])
+                    switch (fumen[i])
                     {
                         case '|': // 跳过注释
                             {
@@ -567,7 +690,7 @@ namespace MajSimai
                             continue;
                         case '<':// Get HS: <HS*1.0>
                             {
-                                if(haveNote)
+                                if (haveNote)
                                 {
                                     break;
                                 }
@@ -621,7 +744,7 @@ namespace MajSimai
                                             throw new InvalidSimaiSyntaxException(Ycount, Xcount, hsContent.ToString(), "Unexpected HS declaration syntax");
                                         }
                                         var hsValue = hsContent[(tagIndex + 1)..]; // get "1.0" from HS*1.0
-                                        if(!float.TryParse(hsValue,out curHSpeed))
+                                        if (!float.TryParse(hsValue, out curHSpeed))
                                         {
                                             throw new InvalidSimaiMarkupException(Ycount, Xcount, hsContent.ToString(), "HSpeed value must be a number");
                                         }
@@ -669,10 +792,10 @@ namespace MajSimai
                                     {
                                         var fakeEachGroup = noteContent[ranges[j]];
                                         //Console.WriteLine(fakeEachGroup.ToString());
-                                        var rawTp = new SimaiRawTimingPoint(fakeTime, 
-                                                                            fakeEachGroup, 
-                                                                            Xcount, 
-                                                                            Ycount, 
+                                        var rawTp = new SimaiRawTimingPoint(fakeTime,
+                                                                            fakeEachGroup,
+                                                                            Xcount,
+                                                                            Ycount,
                                                                             bpm,
                                                                             curHSpeed);
                                         BufferHelper.EnsureBufferLength(noteRawTimingBufIndex + 1, ref noteRawTimingBuffer);
@@ -687,11 +810,11 @@ namespace MajSimai
                             }
                             else
                             {
-                                var rawTp = new SimaiRawTimingPoint(time, 
-                                                                    noteContent, 
-                                                                    Xcount, 
-                                                                    Ycount, 
-                                                                    bpm, 
+                                var rawTp = new SimaiRawTimingPoint(time,
+                                                                    noteContent,
+                                                                    Xcount,
+                                                                    Ycount,
+                                                                    bpm,
                                                                     curHSpeed);
                                 BufferHelper.EnsureBufferLength(noteRawTimingBufIndex + 1, ref noteRawTimingBuffer);
                                 noteRawTimingBuffer[noteRawTimingBufIndex++] = rawTp;
@@ -701,7 +824,7 @@ namespace MajSimai
                             //noteTemp = "";
                             noteContentBufIndex = 0;
                         }
-                        BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref  commaTimingBuffer);
+                        BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
                         commaTimingBuffer[commaTimingBufIndex + 1] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, i);
 
                         time += 1d / (bpm / 60d) * 4d / beats;
@@ -709,7 +832,7 @@ namespace MajSimai
                         haveNote = false;
                         noteContentBufIndex = 0;
                     }
-                    else if(haveNote)
+                    else if (haveNote)
                     {
                         ref readonly var curChar = ref fumen[i];
                         BufferHelper.EnsureBufferLength(noteContentBufIndex + 1, ref noteContentBuffer);
@@ -758,22 +881,8 @@ namespace MajSimai
         {
             return Task.Run(() => ParseChart(level, designer, fumen));
         }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string GetValue(string varline)
-        {
-            return varline.Substring(varline.IndexOf("=") + 1).Trim();
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ReadOnlySpan<char> GetValue(ReadOnlySpan<char> varline)
-        {
-            var index = varline.IndexOf('=');
-            if (index == -1)
-            {
-                return ReadOnlySpan<char>.Empty;
-            }
-            return varline.Slice(index + 1).Trim();
-        }
-
+        #endregion
+        #region Deparse
         //Note: this method only deparse RawChart
         public static string Deparse(SimaiFile simaiFile)
         {
@@ -861,7 +970,23 @@ namespace MajSimai
             using var writer = new StreamWriter(stream, encoding);
             await writer.WriteAsync(fumen);
         }
+        #endregion
 
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static string GetValue(string varline)
+        {
+            return varline.Substring(varline.IndexOf("=") + 1).Trim();
+        }
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        private static ReadOnlySpan<char> GetValue(ReadOnlySpan<char> varline)
+        {
+            var index = varline.IndexOf('=');
+            if (index == -1)
+            {
+                return ReadOnlySpan<char>.Empty;
+            }
+            return varline.Slice(index + 1).Trim();
+        }
         static class MD5Helper
         {
             public static byte[] ComputeHash(byte[] data)
