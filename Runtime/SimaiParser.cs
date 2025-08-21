@@ -389,7 +389,7 @@ namespace MajSimai
             }
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        public static SimaiChart ParseChart(string fumen)
+        public static SimaiChart ParseChart(ReadOnlySpan<char> fumen)
         {
             return ParseChart(string.Empty, string.Empty, fumen);
         }
@@ -742,7 +742,18 @@ namespace MajSimai
                 ArrayPool<SimaiTimingPoint>.Shared.Return(commaTimingBuffer);
             }
         }
-
+        public static Task<SimaiChart> ParseChartAsync(string fumen)
+        {
+            return Task.Run(() => ParseChart(string.Empty, string.Empty, fumen));
+        }
+        public static Task<SimaiChart> ParseChartAsync(ReadOnlyMemory<char> fumen)
+        {
+            return Task.Run(() => ParseChart(string.Empty, string.Empty, fumen.Span));
+        }
+        public static Task<SimaiChart> ParseChartAsync(string level, string designer, ReadOnlyMemory<char> fumen)
+        {
+            return Task.Run(() => ParseChart(level, designer, fumen.Span));
+        }
         public static Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
         {
             return Task.Run(() => ParseChart(level, designer, fumen));
