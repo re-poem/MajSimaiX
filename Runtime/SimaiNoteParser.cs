@@ -330,7 +330,7 @@ namespace MajSimai
                 var customBpm = (double?)null;
                 var nextStartIndex = 0;
                 var startIndex = 0;
-                Span<Range> ranges = stackalloc Range[3];
+                Span<Range> ranges = stackalloc Range[4];
                 while ((startIndex = noteText[nextStartIndex..].IndexOf('[')) != -1)
                 {
                     var slideBody = noteText[(nextStartIndex + startIndex)..];

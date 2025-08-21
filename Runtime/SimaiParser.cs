@@ -269,12 +269,25 @@ namespace MajSimai
             });
         }
 
-        private Task<SimaiMetadata> ReadMetadataAsync(string content)
+        public Task<SimaiMetadata> ReadMetadataAsync(string content)
         {
             return Task.Run(() => ReadMetadata(content));
         }
-        public SimaiMetadata ReadMetadata(string content)
+        public SimaiMetadata ReadMetadata(ReadOnlySpan<char> content)
         {
+            static void SetValue(ReadOnlySpan<char> kvStr, ref string valueStr)
+            {
+                if (!string.IsNullOrEmpty(valueStr))
+                {
+                    return;
+                }
+                var value = SimaiParser.GetValue(kvStr);
+                if (value.Length == 0)
+                {
+                    return;
+                }
+                valueStr = new string(value);
+            }
             var title = string.Empty;
             var artist = string.Empty;
             var designer = string.Empty;
@@ -291,78 +304,200 @@ namespace MajSimai
             var i = 0;
             try
             {
-                var maidataTxt = content.Split("\n");
-                for (i = 0; i < maidataTxt.Length; i++)
+                designers.Fill(string.Empty);
+                fumens.Fill(string.Empty);
+                levels.Fill(string.Empty);
+
+                var lineCount = content.Count('\n') + 1;
+                Span<Range> ranges = stackalloc Range[lineCount];
+                lineCount = content.Split(ranges, '\n');
+                ranges = ranges.Slice(0, lineCount);
+                for (i = 0; i < lineCount; i++)
                 {
-                    if (maidataTxt[i].StartsWith("&title="))
+                    var range = ranges[i];
+                    var maidataTxt = content[range].Trim();
+                    if (maidataTxt.IsEmpty)
                     {
-                        title = GetValue(maidataTxt[i]);
+                        continue;
                     }
-                    else if (maidataTxt[i].StartsWith("&artist="))
+
+                    if (maidataTxt.StartsWith("&title="))
                     {
-                        artist = GetValue(maidataTxt[i]);
+                        SetValue(maidataTxt, ref title);
                     }
-                    else if (maidataTxt[i].StartsWith("&des"))
+                    else if (maidataTxt.StartsWith("&artist="))
                     {
-                        if (maidataTxt[i].StartsWith("&des="))
+                        SetValue(maidataTxt, ref artist);
+                    }
+                    else if (maidataTxt.StartsWith("&des"))
+                    {
+                        if (maidataTxt.StartsWith("&des="))
                         {
-                            designer = GetValue(maidataTxt[i]);
+                            SetValue(maidataTxt, ref designer);
                         }
                         else
                         {
+                            const string DES_1_STRING = "&des_1=";
+                            const string DES_2_STRING = "&des_2=";
+                            const string DES_3_STRING = "&des_3=";
+                            const string DES_4_STRING = "&des_4=";
+                            const string DES_5_STRING = "&des_5=";
+                            const string DES_6_STRING = "&des_6=";
+                            const string DES_7_STRING = "&des_7=";
                             for (var j = 0; j < 7; j++)
                             {
-                                if (maidataTxt[i].StartsWith($"&des_{j + 1}="))
-                                    designers[j] = GetValue(maidataTxt[i]);
+                                var desPrefix = j switch
+                                {
+                                    0 => DES_1_STRING,
+                                    1 => DES_2_STRING,
+                                    2 => DES_3_STRING,
+                                    3 => DES_4_STRING,
+                                    4 => DES_5_STRING,
+                                    5 => DES_6_STRING,
+                                    6 => DES_7_STRING,
+                                    _ => throw new ArgumentOutOfRangeException()
+                                };
+                                if(maidataTxt.StartsWith(desPrefix))
+                                {
+                                    SetValue(maidataTxt, ref designers[j]);
+                                }
                             }
                         }
 
                     }
-                    else if (maidataTxt[i].StartsWith("&first="))
+                    else if (maidataTxt.StartsWith("&first="))
                     {
-                        if (!float.TryParse(GetValue(maidataTxt[i]), out first))
+                        if (!float.TryParse(GetValue(maidataTxt), out first))
                         {
                             first = 0;
                         }
                     }
-                    else if (maidataTxt[i].StartsWith("&lv_") || maidataTxt[i].StartsWith("&inote_"))
+                    else if (maidataTxt.StartsWith("&lv_"))
                     {
-                        for (var j = 1; j < 8 && i < maidataTxt.Length; j++)
+                        const string LV_1_STRING = "&lv_1=";
+                        const string LV_2_STRING = "&lv_2=";
+                        const string LV_3_STRING = "&lv_3=";
+                        const string LV_4_STRING = "&lv_4=";
+                        const string LV_5_STRING = "&lv_5=";
+                        const string LV_6_STRING = "&lv_6=";
+                        const string LV_7_STRING = "&lv_7=";
+                        for (var j = 1; j < 8; j++)
                         {
-                            if (maidataTxt[i].StartsWith("&lv_" + j + "="))
-                                levels[j - 1] = GetValue(maidataTxt[i]);
-                            if (maidataTxt[i].StartsWith("&inote_" + j + "="))
+                            var lvPrefix = j switch
                             {
-                                var TheNote = "";
-                                TheNote += GetValue(maidataTxt[i]) + "\n";
-                                i++;
-                                for (; i < maidataTxt.Length; i++)
-                                {
-                                    if (i < maidataTxt.Length)
-                                        if (maidataTxt[i].StartsWith("&"))
-                                            break;
-                                    TheNote += maidataTxt[i] + "\n";
-                                }
-
-                                fumens[j - 1] = TheNote.Trim();
+                                1 => LV_1_STRING,
+                                2 => LV_2_STRING,
+                                3 => LV_3_STRING,
+                                4 => LV_4_STRING,
+                                5 => LV_5_STRING,
+                                6 => LV_6_STRING,
+                                7 => LV_7_STRING,
+                                _ => throw new ArgumentOutOfRangeException()
+                            };
+                            if (maidataTxt.StartsWith(lvPrefix))
+                            {
+                                SetValue(maidataTxt, ref levels[j - 1]);
                             }
                         }
                     }
-                    else if (maidataTxt[i].StartsWith("&"))
+                    else if (maidataTxt.StartsWith("&inote_"))
                     {
-                        if (!maidataTxt[i].Contains("="))
-                            throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt[i]);
-                        var a = maidataTxt[i].Split("=");
-                        var prefix = a[0][1..];
-                        var value = a[1];
+                        const string INOTE_1_STRING = "&inote_1=";
+                        const string INOTE_2_STRING = "&inote_2=";
+                        const string INOTE_3_STRING = "&inote_3=";
+                        const string INOTE_4_STRING = "&inote_4=";
+                        const string INOTE_5_STRING = "&inote_5=";
+                        const string INOTE_6_STRING = "&inote_6=";
+                        const string INOTE_7_STRING = "&inote_7=";
+
+                        for (var j = 1; j < 8; j++)
+                        {
+                            var inotePrefix = j switch
+                            {
+                                1 => INOTE_1_STRING,
+                                2 => INOTE_2_STRING,
+                                3 => INOTE_3_STRING,
+                                4 => INOTE_4_STRING,
+                                5 => INOTE_5_STRING,
+                                6 => INOTE_6_STRING,
+                                7 => INOTE_7_STRING,
+                                _ => throw new ArgumentOutOfRangeException()
+                            };
+                            if (maidataTxt.StartsWith(inotePrefix))
+                            {
+                                var buffer = ArrayPool<char>.Shared.Rent(32);
+                                try
+                                {
+                                    Array.Clear(buffer, 0, buffer.Length);
+                                    var bufferIndex = 0;
+                                    var value = GetValue(maidataTxt);
+                                    BufferHelper.EnsureBufferLength(value.Length + 1, ref buffer);
+                                    value.CopyTo(buffer);
+                                    bufferIndex += value.Length;
+                                    buffer[bufferIndex++] = '\n';
+                                    i++;
+                                    for (; i < lineCount; i++)
+                                    {
+                                        range = ranges[i];
+                                        maidataTxt = content[range].Trim();
+                                        if(maidataTxt.IsEmpty)
+                                        {
+                                            continue;
+                                        }
+                                        else if (maidataTxt[0] == '&')
+                                        {
+                                            break;
+                                        }
+                                        for (var i2 = 0; i2 < maidataTxt.Length; i2++)
+                                        {
+                                            ref readonly var current = ref maidataTxt[i2];
+                                            if(current == 'E')
+                                            {
+                                                break;
+                                            }
+                                            BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
+                                            buffer[bufferIndex++] = current;
+                                        }
+                                        BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
+                                        buffer[bufferIndex++] = '\n';
+                                    }
+
+                                    fumens[j - 1] = new string(buffer.AsSpan(0, bufferIndex).Trim());
+                                }
+                                finally
+                                {
+                                    ArrayPool<char>.Shared.Return(buffer);
+                                }
+                            }
+                        }
+                    }
+                    else if (maidataTxt.StartsWith("&"))
+                    {
+                        if (!maidataTxt.Contains('=') || !SimaiCommand.TryParse(maidataTxt, out var cmd))
+                        {
+                            throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt.ToString());
+                        }
                         BufferHelper.EnsureBufferLength(cI + 1, ref commands);
-                        commands[i++] = new SimaiCommand(prefix, value);
+                        commands[i++] = cmd;
                     }
                 }
-                for (var j = 0; j < 7; j++)
+
+                
+                if(!string.IsNullOrEmpty(designer))
                 {
-                    designers[j] ??= designer;
+                    for (var j = 0; j < 7; j++)
+                    {
+                        ref var d = ref designers[j];
+                        if (string.IsNullOrEmpty(d))
+                        {
+                            d = designer;
+                        }
+                    }
                 }
+                var encoding = Encoding.UTF8;
+                var byteCount = encoding.GetByteCount(content);
+                var bytes = new byte[byteCount];
+                encoding.GetBytes(content, bytes);
                 return new SimaiMetadata(title,
                                          artist,
                                          first,
@@ -370,7 +505,7 @@ namespace MajSimai
                                          levels,
                                          fumens,
                                          commands.AsSpan(0, cI),
-                                         MD5Helper.ComputeHashAsBase64String(Encoding.UTF8.GetBytes(content)));
+                                         MD5Helper.ComputeHashAsBase64String(bytes));
             }
             catch (InvalidSimaiMarkupException)
             {
