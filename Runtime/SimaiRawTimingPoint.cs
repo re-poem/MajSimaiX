@@ -15,17 +15,16 @@ namespace MajSimai
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
 
-        public SimaiRawTimingPoint(double timing, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
+        public SimaiRawTimingPoint(double timing, ReadOnlySpan<char> rawContent, int textPosX = 0, int textPosY = 0, float bpm = 0f,
             float hspeed = 1f)
         {
             Timing = timing;
             RawTextPositionX = textPosX;
             RawTextPositionY = textPosY;
-            if (!string.IsNullOrEmpty(rawContent))
+            if (!rawContent.IsEmpty)
             {
-                var rRCSpan = rawContent.AsSpan();
-                Span<char> rCSpan = stackalloc char[rRCSpan.Length];
-                rRCSpan.Replace(rCSpan, '\n', ' ');
+                Span<char> rCSpan = stackalloc char[rawContent.Length];
+                rawContent.Replace(rCSpan, '\n', ' ');
                 var i2 = 0;
                 for (var i = 0; i < rCSpan.Length; i++)
                 {
@@ -39,7 +38,15 @@ namespace MajSimai
                         rCSpan[i2++] = current;
                     }
                 }
-                RawContent = new string(rCSpan.Slice(0, i2));
+                var newRaw = rCSpan.Slice(0, i2);
+                if (newRaw != rawContent)
+                {
+                    RawContent = new string(rCSpan.Slice(0, i2));
+                }
+                else
+                {
+                    RawContent = rawContent.ToString();
+                }
             }
             else
             {
@@ -52,7 +59,7 @@ namespace MajSimai
         {
             var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
 
-            return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
+            return new SimaiTimingPoint(Timing, notes, RawContent, RawTextPositionX, RawTextPositionY, Bpm, HSpeed);
         }
         public Task<SimaiTimingPoint> ParseAsync()
         {

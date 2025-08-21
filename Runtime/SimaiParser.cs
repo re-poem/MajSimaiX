@@ -388,191 +388,362 @@ namespace MajSimai
                 }
             }
         }
-
-        public static async Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
+        [MethodImpl(MethodImplOptions.AggressiveInlining)]
+        public static SimaiChart ParseChart(string fumen)
         {
-            return await Task.Run(async () =>
+            return ParseChart(string.Empty, string.Empty, fumen);
+        }
+        public static SimaiChart ParseChart(string level, string designer, ReadOnlySpan<char> fumen)
+        {
+            static bool IsNote(char c)
             {
-                if (string.IsNullOrEmpty(fumen))
-                {
-                    return new SimaiChart(level, designer, string.Empty, null);
-                }
-                var noteRawTiminglist = new List<SimaiRawTimingPoint>();
-                var commaTimingList = new List<SimaiTimingPoint>();
+                var isTapOrHoldOrSlide = c >= '0' && c <= '9';
+                var isTouchOrTouchHold = c >= 'A' && c <= 'E';
 
-                float bpm = 0;
-                var curHSpeed = 1f;
-                double time = 0; //in seconds
-                var beats = 4f;
-                var haveNote = false;
-                var noteTemp = "";
-                int Ycount = 0, Xcount = 0;
+                return isTapOrHoldOrSlide || isTouchOrTouchHold;
+            }
+            if (fumen.IsEmpty)
+            {
+                return new SimaiChart(level, designer, string.Empty, null);
+            }
+            var noteContentBuffer = ArrayPool<char>.Shared.Rent(16);
+            var noteRawTimingBuffer = ArrayPool<SimaiRawTimingPoint>.Shared.Rent(16);
+            var commaTimingBuffer = ArrayPool<SimaiTimingPoint>.Shared.Rent(16);
 
-                try
+            var noteContentBufIndex = 0;
+            var noteRawTimingBufIndex = 0;
+            var commaTimingBufIndex = 0;
+
+            float bpm = 0;
+            var curHSpeed = 1f;
+            double time = 0; //in seconds
+            var beats = 4f; //{4}
+            var haveNote = false;
+            //var noteTemp = "";
+            
+            int Ycount = 1, Xcount = 0;
+
+            /// Xcount| 1 2 3 4 5 6 7 8 9 10| 
+            /// --------------------------------
+            ///       | A B C D E F G H I J | 1
+            ///       | K L N M O P Q R F T | 2
+            ///       | U V W X Y Z 1 1 4 5 | 3
+            ///       | 1 4 X M M C G H H H | 4
+            /// ----------------------------| Ycount
+            try
+            {
+                for (var i = 0; i < fumen.Length; i++)
                 {
-                    for (var i = 0; i < fumen.Length; i++)
+                    if (fumen[i] == '\n')
                     {
-                        if (fumen[i] == '|' && i + 1 < fumen.Length && fumen[i + 1] == '|')
-                        {
-                            // 跳过注释
-                            Xcount++;
-                            while (i < fumen.Length && fumen[i] != '\n')
+                        Ycount++;
+                        Xcount = 0;
+                        continue;
+                    }
+                    else
+                    {
+                        Xcount++;
+                    }
+                    switch(fumen[i])
+                    {
+                        case '|': // 跳过注释
                             {
-                                i++;
-                                Xcount++;
-                            }
-
-                            Ycount++;
-                            Xcount = 0;
-                            continue;
-                        }
-
-                        if (fumen[i] == '\n')
-                        {
-                            Ycount++;
-                            Xcount = 0;
-                        }
-                        else
-                        {
-                            Xcount++;
-                        }
-
-                        if (fumen[i] == '(')
-                        //Get bpm
-                        {
-                            haveNote = false;
-                            noteTemp = "";
-                            var bpm_s = "";
-                            i++;
-                            Xcount++;
-                            while (fumen[i] != ')')
-                            {
-                                bpm_s += fumen[i];
-                                i++;
-                                Xcount++;
-                            }
-
-                            if (!float.TryParse(bpm_s, out bpm))
-                            {
-                                throw new InvalidSimaiMarkupException(Ycount, Xcount, bpm_s, "BPM value must be a number");
-                            }
-                            //Console.WriteLine("BPM" + bpm);
-                            continue;
-                        }
-
-                        if (fumen[i] == '{')
-                        //Get beats
-                        {
-                            haveNote = false;
-                            noteTemp = "";
-                            var beats_s = "";
-                            i++;
-                            Xcount++;
-                            while (fumen[i] != '}')
-                            {
-                                beats_s += fumen[i];
-                                i++;
-                                Xcount++;
-                            }
-                            if (beats_s[0] == '#')
-                            {
-                                if (!float.TryParse(beats_s.AsSpan(1), out var beatInterval))
+                                var str = fumen[i..];
+                                if (str.Length >= 2 && str[i + 1] == '|')
                                 {
-                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, beats_s, "Beats value must be a number");
-                                }
-                                beats = 240f / (bpm * beatInterval);
-                            }
-                            else if (!float.TryParse(beats_s, out beats))
-                            {
-                                throw new InvalidSimaiMarkupException(Ycount, Xcount, beats_s, "Beats value must be a number");
-                            }
-                            //Console.WriteLine("BEAT" + beats);
-                            continue;
-                        }
-
-                        if (fumen[i] == 'H')
-                        //Get HS
-                        {
-                            haveNote = false;
-                            noteTemp = "";
-                            var hs_s = "";
-                            if (fumen[i + 1] == 'S' && fumen[i + 2] == '*')
-                            {
-                                i += 3;
-                                Xcount += 3;
-                            }
-
-                            while (fumen[i] != '>')
-                            {
-                                hs_s += fumen[i];
-                                i++;
-                                Xcount++;
-                            }
-
-                            if (!float.TryParse(hs_s, out curHSpeed))
-                            {
-                                throw new InvalidSimaiMarkupException(Ycount, Xcount, hs_s, "HSpeed value must be a number");
-                            }
-                            //Console.WriteLine("HS" + curHSpeed);
-                            continue;
-                        }
-
-                        if (IsNote(fumen[i])) haveNote = true;
-                        if (haveNote && fumen[i] != ',') noteTemp += fumen[i];
-                        if (fumen[i] == ',')
-                        {
-                            if (haveNote)
-                            {
-                                if (noteTemp.Contains('`'))
-                                {
-                                    // 伪双
-                                    var fakeEachList = noteTemp.Split('`');
-                                    var fakeTime = time;
-                                    var timeInterval = 1.875 / bpm; // 128分音
-                                    foreach (var fakeEachGroup in fakeEachList)
+                                    i++;
+                                    Xcount++;
+                                    for (; i < fumen.Length;)
                                     {
-                                        Console.WriteLine(fakeEachGroup);
-                                        noteRawTiminglist.Add(new SimaiRawTimingPoint(fakeTime, Xcount, Ycount, fakeEachGroup, bpm,
-                                            curHSpeed));
-                                        fakeTime += timeInterval;
+                                        i++;
+                                        Xcount++;
+                                        if (fumen[i] == '\n')
+                                        {
+                                            Ycount++;
+                                            Xcount = 0;
+                                            break;
+                                        }
                                     }
                                 }
                                 else
                                 {
-                                    noteRawTiminglist.Add(new SimaiRawTimingPoint(time, Xcount, Ycount, noteTemp, bpm, curHSpeed));
+                                    var s = fumen[i].ToString();
+                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, s, $"Unexpected character \"{s}\"");
                                 }
-                                //Console.WriteLine("Note:" + noteTemp);
-
-                                noteTemp = "";
                             }
+                            continue;
+                        case '(': //Get bpm
+                            {
+                                haveNote = false;
+                                //noteTemp = "";
+                                noteContentBufIndex = 0;
 
-                            commaTimingList.Add(new SimaiTimingPoint(time, null, Xcount, Ycount, "", bpm, 1, i));
+                                if (fumen[i..].Length >= 3) // (x)
+                                {
+                                    var startAt = i + 1;
+                                    for (; i < fumen.Length;)
+                                    {
+                                        i++;
+                                        Xcount++;
+                                        if (fumen[i] == '\n')
+                                        {
+                                            Ycount++;
+                                            Xcount = 0;
+                                            continue;
+                                        }
+                                        else if (fumen[i] == ')')
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    var endAt = i;
+                                    var bpmStr = fumen[startAt..endAt].Trim();
 
+                                    if (!float.TryParse(bpmStr, out bpm))
+                                    {
+                                        throw new InvalidSimaiSyntaxException(Ycount, Xcount, bpmStr.ToString(), "BPM value must be a number");
+                                    }
+                                }
+                                else
+                                {
+                                    var s = fumen[i].ToString();
+                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, s, $"Unexpected character \"{s}\"");
+                                }
+                                //Console.WriteLine("BPM" + bpm);
+                            }
+                            continue;
+                        case '{'://Get beats
+                            {
+                                haveNote = false;
+                                //noteTemp = "";
+                                noteContentBufIndex = 0;
 
-                            time += 1d / (bpm / 60d) * 4d / beats;
-                            //Console.WriteLine(time);
-                            haveNote = false;
-                        }
+                                if (fumen[i..].Length >= 3) // {x}
+                                {
+                                    var startAt = i + 1;
+                                    for (; i < fumen.Length;)
+                                    {
+                                        i++;
+                                        Xcount++;
+                                        if (fumen[i] == '\n')
+                                        {
+                                            Ycount++;
+                                            Xcount = 0;
+                                            continue;
+                                        }
+                                        else if (fumen[i] == '}')
+                                        {
+                                            break;
+                                        }
+                                    }
+                                    var endAt = i;
+                                    var beatsStr = fumen[startAt..endAt].Trim();
+
+                                    if (beatsStr.IsEmpty)
+                                    {
+                                        throw new InvalidSimaiSyntaxException(Ycount, Xcount, fumen[startAt..endAt].ToString(), "Beats value must be a number");
+                                    }
+                                    else if (beatsStr[0] == '#')
+                                    {
+                                        if (!float.TryParse(beatsStr[1..], out var beatInterval))
+                                        {
+                                            throw new InvalidSimaiSyntaxException(Ycount, Xcount, beatsStr.ToString(), "Beats value must be a number");
+                                        }
+                                        beats = 240f / (bpm * beatInterval);
+                                    }
+                                    else if (!float.TryParse(beatsStr, out beats))
+                                    {
+                                        throw new InvalidSimaiSyntaxException(Ycount, Xcount, beatsStr.ToString(), "Beats value must be a number");
+                                    }
+                                }
+                                else
+                                {
+                                    var s = fumen[i].ToString();
+                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, s, $"Unexpected character \"{s}\"");
+                                }
+                                //Console.WriteLine("BEAT" + beats);
+                            }
+                            continue;
+                        case '<':// Get HS: <HS*1.0>
+                            {
+                                if(haveNote)
+                                {
+                                    break;
+                                }
+                                haveNote = false;
+                                //noteTemp = "";
+                                noteContentBufIndex = 0;
+
+                                if (fumen[i..].Length >= 4) // <HS*x>
+                                {
+                                    var startAt = i + 1;
+                                    var buffer = ArrayPool<char>.Shared.Rent(16);
+                                    var bufferIndex = 0;
+                                    var tagIndex = -1; // position of '*'
+                                    try
+                                    {
+                                        for (; i < fumen.Length;)
+                                        {
+                                            i++;
+                                            Xcount++;
+                                            ref readonly var currentChar = ref fumen[i];
+                                            if (currentChar == '\n')
+                                            {
+                                                Ycount++;
+                                                Xcount = 0;
+                                                continue;
+                                            }
+                                            else if(currentChar == '*')
+                                            {
+                                                if(tagIndex != -1)
+                                                {
+                                                    throw new InvalidSimaiSyntaxException(Ycount, Xcount, fumen[(startAt - 1)..(i + 1)].ToString(), "Unexpected HS declaration syntax");
+                                                }
+                                                tagIndex = bufferIndex;
+                                            }
+                                            else if (currentChar == '>')
+                                            {
+                                                break;
+                                            }
+                                            BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
+                                            buffer[bufferIndex++] = currentChar;
+                                        }
+                                        var hsContent = buffer.AsSpan(0, bufferIndex);
+                                        var isInvalid = hsContent.IsEmpty ||
+                                                        hsContent.Length < 4 ||
+                                                        hsContent[0] != 'H' ||
+                                                        hsContent[1] != 'S' ||
+                                                        tagIndex == -1;
+                                        if (isInvalid) // min: HS*1
+                                        {
+                                            throw new InvalidSimaiSyntaxException(Ycount, Xcount, hsContent.ToString(), "Unexpected HS declaration syntax");
+                                        }
+                                        var hsValue = hsContent[(tagIndex + 1)..]; // get "1.0" from HS*1.0
+                                        if(!float.TryParse(hsValue,out curHSpeed))
+                                        {
+                                            throw new InvalidSimaiMarkupException(Ycount, Xcount, hsContent.ToString(), "HSpeed value must be a number");
+                                        }
+                                        //Console.WriteLine("HS" + curHSpeed);
+                                    }
+                                    finally
+                                    {
+                                        ArrayPool<char>.Shared.Return(buffer);
+                                    }
+                                }
+                                else
+                                {
+                                    var s = fumen[i].ToString();
+                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, s, $"Unexpected character \"{s}\"");
+                                }
+                            }
+                            continue;
                     }
-                    var noteTimingPoints = new SimaiTimingPoint[noteRawTiminglist.Count];
-                    for (int i = 0; i < noteRawTiminglist.Count; i++)
+
+                    if (!haveNote && IsNote(fumen[i]))
                     {
-                        var rawTiming = noteRawTiminglist[i];
-                        var timingPoint = await rawTiming.ParseAsync();
-                        noteTimingPoints[i] = timingPoint;
+                        haveNote = true;
+                        noteContentBufIndex = 0;
                     }
 
-                    return new SimaiChart(level, designer, fumen, noteTimingPoints, commaTimingList.ToArray());
+                    if (fumen[i] == ',')
+                    {
+                        if (haveNote)
+                        {
+                            var noteContent = (ReadOnlySpan<char>)(noteContentBuffer.AsSpan(0, noteContentBufIndex));
+                            var fakeEachTagCount = noteContent.Count('`');
+
+                            if (fakeEachTagCount != 0)
+                            {
+                                var rentedBufferForRanges = ArrayPool<Range>.Shared.Rent(fakeEachTagCount + 1);
+                                var ranges = rentedBufferForRanges.AsSpan(fakeEachTagCount + 1);
+                                try
+                                {
+                                    // 伪双
+                                    var tagCount = noteContent.Split(ranges, '`', StringSplitOptions.RemoveEmptyEntries);
+                                    var fakeTime = time;
+                                    var timeInterval = 1.875 / bpm; // 128分音
+
+                                    for (var j = 0; j < tagCount; j++)
+                                    {
+                                        var fakeEachGroup = noteContent[ranges[j]];
+                                        //Console.WriteLine(fakeEachGroup.ToString());
+                                        var rawTp = new SimaiRawTimingPoint(fakeTime, 
+                                                                            fakeEachGroup, 
+                                                                            Xcount, 
+                                                                            Ycount, 
+                                                                            bpm,
+                                                                            curHSpeed);
+                                        BufferHelper.EnsureBufferLength(noteRawTimingBufIndex + 1, ref noteRawTimingBuffer);
+                                        noteRawTimingBuffer[noteRawTimingBufIndex++] = rawTp;
+                                        fakeTime += timeInterval;
+                                    }
+                                }
+                                finally
+                                {
+                                    ArrayPool<Range>.Shared.Return(rentedBufferForRanges);
+                                }
+                            }
+                            else
+                            {
+                                var rawTp = new SimaiRawTimingPoint(time, 
+                                                                    noteContent, 
+                                                                    Xcount, 
+                                                                    Ycount, 
+                                                                    bpm, 
+                                                                    curHSpeed);
+                                BufferHelper.EnsureBufferLength(noteRawTimingBufIndex + 1, ref noteRawTimingBuffer);
+                                noteRawTimingBuffer[noteRawTimingBufIndex++] = rawTp;
+                            }
+                            //Console.WriteLine("Note:" + noteTemp);
+
+                            //noteTemp = "";
+                            noteContentBufIndex = 0;
+                        }
+                        BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref  commaTimingBuffer);
+                        commaTimingBuffer[commaTimingBufIndex + 1] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, i);
+
+                        time += 1d / (bpm / 60d) * 4d / beats;
+                        //Console.WriteLine(time);
+                        haveNote = false;
+                        noteContentBufIndex = 0;
+                    }
+                    else if(haveNote)
+                    {
+                        ref readonly var curChar = ref fumen[i];
+                        BufferHelper.EnsureBufferLength(noteContentBufIndex + 1, ref noteContentBuffer);
+                        noteContentBuffer[noteContentBufIndex++] = curChar;
+                    }
                 }
-                catch (InvalidSimaiMarkupException)
+                var noteTimingPoints = new SimaiTimingPoint[noteRawTimingBufIndex];
+
+                Parallel.For(0, noteRawTimingBufIndex, i =>
                 {
-                    throw;
-                }
-                catch (Exception e)
-                {
-                    throw new Exception("Error at " + Ycount + "," + Xcount + "\n" + e.Message);
-                }
-            });
+                    var rawTiming = noteRawTimingBuffer[i];
+                    var timingPoint = rawTiming.Parse();
+                    noteTimingPoints[i] = timingPoint;
+                });
+
+                return new SimaiChart(level, designer, fumen.ToString(), noteTimingPoints, commaTimingBuffer);
+            }
+            catch (InvalidSimaiMarkupException)
+            {
+                throw;
+            }
+            catch (Exception e)
+            {
+                throw new Exception("Error at " + Ycount + "," + Xcount + "\n" + e.Message);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(noteContentBuffer);
+                ArrayPool<SimaiRawTimingPoint>.Shared.Return(noteRawTimingBuffer);
+                ArrayPool<SimaiTimingPoint>.Shared.Return(commaTimingBuffer);
+            }
+        }
+
+        public static Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
+        {
+            return Task.Run(() => ParseChart(level, designer, fumen));
         }
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         private static string GetValue(string varline)
@@ -588,14 +759,6 @@ namespace MajSimai
                 return ReadOnlySpan<char>.Empty;
             }
             return varline.Slice(index + 1).Trim();
-        }
-        private static bool IsNote(char noteText)
-        {
-            var SlideMarks = "1234567890ABCDE"; ///ABCDE for touch
-            foreach (var mark in SlideMarks)
-                if (noteText == mark)
-                    return true;
-            return false;
         }
 
         //Note: this method only deparse RawChart
