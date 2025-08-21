@@ -10,10 +10,9 @@ using System.Threading.Tasks;
 
 namespace MajSimai
 {
-    public partial class SimaiParser
+    public static class SimaiParser
     {
-        public static SimaiParser Shared { get; } = new SimaiParser();
-        public async Task<SimaiFile> ParseAsync(string filePath)
+        public static async Task<SimaiFile> ParseAsync(string filePath)
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException($"\"{filePath}\" could not be found");
@@ -61,7 +60,7 @@ namespace MajSimai
 
             return simaiFile;
         }
-        public async Task<SimaiMetadata> ParseMetadataAsync(string filePath)
+        public static async Task<SimaiMetadata> ParseMetadataAsync(string filePath)
         {
             if (!File.Exists(filePath))
                 throw new FileNotFoundException($"\"{filePath}\" could not be found");
@@ -75,15 +74,15 @@ namespace MajSimai
 
             return metadata;
         }
-        public SimaiFile Parse(string filePath)
+        public static SimaiFile Parse(string filePath)
         {
             return ParseAsync(filePath).Result;
         }
-        public SimaiMetadata ParseMetadata(string filePath)
+        public static SimaiMetadata ParseMetadata(string filePath)
         {
             return ParseMetadataAsync(filePath).Result;
         }
-        public async Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
+        public static async Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
         {
             return await Task.Run(async () =>
             {
@@ -269,11 +268,11 @@ namespace MajSimai
             });
         }
 
-        public Task<SimaiMetadata> ReadMetadataAsync(string content)
+        public static Task<SimaiMetadata> ReadMetadataAsync(string content)
         {
             return Task.Run(() => ReadMetadata(content));
         }
-        public SimaiMetadata ReadMetadata(ReadOnlySpan<char> content)
+        public static SimaiMetadata ReadMetadata(ReadOnlySpan<char> content)
         {
             static void SetValue(ReadOnlySpan<char> kvStr, ref string valueStr)
             {
@@ -548,7 +547,7 @@ namespace MajSimai
         }
 
         //Note: this method only deparse RawChart
-        public string Deparse(SimaiFile simaiFile)
+        public static string Deparse(SimaiFile simaiFile)
         {
             var sb = new StringBuilder();
             var finalDesigner = string.Empty;
@@ -610,25 +609,25 @@ namespace MajSimai
             }
             return sb.ToString();
         }
-        public void Deparse(SimaiFile simaiFile, Stream stream)
+        public static void Deparse(SimaiFile simaiFile, Stream stream)
         {
             Deparse(simaiFile, stream, Encoding.UTF8);
         }
-        public void Deparse(SimaiFile simaiFile, Stream stream, Encoding encoding)
+        public static void Deparse(SimaiFile simaiFile, Stream stream, Encoding encoding)
         {
             var fumen = Deparse(simaiFile);
             using var writer = new StreamWriter(stream, encoding);
             writer.Write(fumen);
         }
-        public Task<string> DeparseAsync(SimaiFile simaiFile)
+        public static Task<string> DeparseAsync(SimaiFile simaiFile)
         {
             return Task.Run(() => Deparse(simaiFile));
         }
-        public async Task DeparseAsync(SimaiFile simaiFile, Stream stream)
+        public static async Task DeparseAsync(SimaiFile simaiFile, Stream stream)
         {
             await DeparseAsync(simaiFile, stream, Encoding.UTF8);
         }
-        public async Task DeparseAsync(SimaiFile simaiFile, Stream stream, Encoding encoding)
+        public static async Task DeparseAsync(SimaiFile simaiFile, Stream stream, Encoding encoding)
         {
             var fumen = await DeparseAsync(simaiFile);
             using var writer = new StreamWriter(stream, encoding);
