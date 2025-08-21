@@ -449,7 +449,7 @@ namespace MajSimai
                         case '|': // 跳过注释
                             {
                                 var str = fumen[i..];
-                                if (str.Length >= 2 && str[i + 1] == '|')
+                                if (str.Length >= 2 && str[1] == '|')
                                 {
                                     i++;
                                     Xcount++;
