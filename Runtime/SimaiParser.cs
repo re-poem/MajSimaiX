@@ -451,18 +451,17 @@ namespace MajSimai
                                 var str = fumen[i..];
                                 if (str.Length >= 2 && str[1] == '|')
                                 {
-                                    i++;
-                                    Xcount++;
-                                    for (; i < fumen.Length;)
+                                    i += 2;
+                                    Xcount += 2;
+                                    for (; i < fumen.Length; i++)
                                     {
-                                        i++;
-                                        Xcount++;
                                         if (fumen[i] == '\n')
                                         {
                                             Ycount++;
                                             Xcount = 0;
                                             break;
                                         }
+                                        Xcount++;
                                     }
                                 }
                                 else
@@ -481,10 +480,10 @@ namespace MajSimai
                                 if (fumen[i..].Length >= 3) // (x)
                                 {
                                     var startAt = i + 1;
-                                    for (; i < fumen.Length;)
+                                    i++;
+                                    Xcount++;
+                                    for (; i < fumen.Length; i++)
                                     {
-                                        i++;
-                                        Xcount++;
                                         if (fumen[i] == '\n')
                                         {
                                             Ycount++;
@@ -495,6 +494,7 @@ namespace MajSimai
                                         {
                                             break;
                                         }
+                                        Xcount++;
                                     }
                                     var endAt = i;
                                     var bpmStr = fumen[startAt..endAt].Trim();
@@ -521,10 +521,10 @@ namespace MajSimai
                                 if (fumen[i..].Length >= 3) // {x}
                                 {
                                     var startAt = i + 1;
-                                    for (; i < fumen.Length;)
+                                    i++;
+                                    Xcount++;
+                                    for (; i < fumen.Length; i++)
                                     {
-                                        i++;
-                                        Xcount++;
                                         if (fumen[i] == '\n')
                                         {
                                             Ycount++;
@@ -535,6 +535,7 @@ namespace MajSimai
                                         {
                                             break;
                                         }
+                                        Xcount++;
                                     }
                                     var endAt = i;
                                     var beatsStr = fumen[startAt..endAt].Trim();
@@ -580,12 +581,12 @@ namespace MajSimai
                                     var buffer = ArrayPool<char>.Shared.Rent(16);
                                     var bufferIndex = 0;
                                     var tagIndex = -1; // position of '*'
+                                    i++;
+                                    Xcount++;
                                     try
                                     {
-                                        for (; i < fumen.Length;)
+                                        for (; i < fumen.Length; i++)
                                         {
-                                            i++;
-                                            Xcount++;
                                             ref readonly var currentChar = ref fumen[i];
                                             if (currentChar == '\n')
                                             {
@@ -593,9 +594,9 @@ namespace MajSimai
                                                 Xcount = 0;
                                                 continue;
                                             }
-                                            else if(currentChar == '*')
+                                            else if (currentChar == '*')
                                             {
-                                                if(tagIndex != -1)
+                                                if (tagIndex != -1)
                                                 {
                                                     throw new InvalidSimaiSyntaxException(Ycount, Xcount, fumen[(startAt - 1)..(i + 1)].ToString(), "Unexpected HS declaration syntax");
                                                 }
@@ -607,6 +608,7 @@ namespace MajSimai
                                             }
                                             BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                             buffer[bufferIndex++] = currentChar;
+                                            Xcount++;
                                         }
                                         var hsContent = buffer.AsSpan(0, bufferIndex);
                                         var isInvalid = hsContent.IsEmpty ||
