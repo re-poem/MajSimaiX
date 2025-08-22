@@ -580,6 +580,191 @@ namespace MajSimai
 
                 return true;
             }
+
+            readonly ref struct NoteFlag
+            {
+                public readonly bool IsTouchNote;           // ABCDE
+                public readonly bool IsBreak;               // b
+                public readonly bool IsBreakSlide;          // b
+                public readonly bool IsHanabi;              // f
+                public readonly bool IsHold;                // h
+                public readonly bool IsSlide;               // -^v<>Vpqszw
+                public readonly bool IsSlideNoHead;         // !
+                public readonly bool IsSlideNoHeadAndDelay; // ?
+                public readonly bool IsEx;                  // x
+                public readonly bool IsForceStar;           // $
+                public readonly bool IsFakeRotate;          // $$
+                public readonly bool IsMine;                // m
+                public readonly bool IsMineSlide;           // m
+
+                public readonly Span<char> NoteContent;
+
+                public NoteFlag(bool isTouchNote,
+                                bool isBreak,
+                                bool isBreakSlide,
+                                bool isHanabi,
+                                bool isHold,
+                                bool isSlide,
+                                bool isSlideNoHead,
+                                bool isSlideNoHeadAndDelay,
+                                bool isEx,
+                                bool isForceStar,
+                                bool isFakeRotate,
+                                bool isMine,
+                                bool isMineSlide,
+                                Span<char> noteContent)
+                {
+                    IsTouchNote = isTouchNote;
+                    IsBreak = isBreak;
+                    IsBreakSlide = isBreakSlide;
+                    IsHanabi = isHanabi;
+                    IsHold = isHold;
+                    IsSlide = isSlide;
+                    IsSlideNoHead = isSlideNoHead;
+                    IsSlideNoHeadAndDelay = isSlideNoHeadAndDelay;
+                    IsEx = isEx;
+                    IsForceStar = isForceStar;
+                    IsFakeRotate = isFakeRotate;
+                    IsMine = isMine;
+                    IsMineSlide = isMineSlide;
+                    NoteContent = noteContent;
+                }
+
+                public static NoteFlag Detect(zString noteContent, Span<char> dst)
+                {
+                    if(noteContent.IsEmpty)
+                    {
+                        return default;
+                    }
+                    // Flags
+                    var isTouchNote = false;
+                    var isBreak = false;
+                    var isBreakSlide = false;
+                    var isHanabi = false;
+                    var isHold = false;
+                    var isSlide = false;
+                    var isSlideNoHead = false;
+                    var isSlideNoHeadAndDelay = false;
+                    var isEx = false;
+                    var isForceStar = false;
+                    var isFakeRotate = false;
+                    var isMine = false;
+                    var isMineSlide = false;
+
+                    var forceStarTagCount = 0;
+                    var j = 0;
+                    for (var i = 0; i < noteContent.Length; i++)
+                    {
+                        ref readonly var curChar = ref noteContent[i];
+                        switch (curChar)
+                        {
+                            case '-':
+                            case '^':
+                            case 'v':
+                            case '<':
+                            case '>':
+                            case 'V':
+                            case 'p':
+                            case 'q':
+                            case 's':
+                            case 'z':
+                            case 'w':
+                                isSlide = true;
+                                break;
+                            case 'A':
+                            case 'B':
+                            case 'C':
+                            case 'D':
+                            case 'E':
+                                isTouchNote = true;
+                                break;
+                            case 'f':
+                                isHanabi = true;
+                                break;
+                            case 'x':
+                                isEx = true;
+                                break;
+                            case 'h':
+                                isHold = true;
+                                break;
+                            case '!':
+                                isSlideNoHead = true;
+                                continue;
+                            case '?':
+                                isSlideNoHeadAndDelay = true;
+                                continue;
+                            case '$':
+                                forceStarTagCount++;
+                                continue;
+                            case 'b':
+                                {
+                                    if (isBreak & isBreakSlide)
+                                    {
+                                        continue;
+                                    }
+                                    if(isSlide)
+                                    {
+                                        if(i != noteContent.Length - 1) // 1-3b[8:1]
+                                        {
+                                            isBreakSlide |= noteContent[i + 1] == '[';
+                                        }
+                                        else // 1-3[8:1]b
+                                        {
+                                            isBreakSlide = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        isBreak = true;
+                                    }
+                                }
+                                continue;
+                            case 'm':
+                                {
+                                    if (isMine & isMineSlide)
+                                    {
+                                        continue;
+                                    }
+                                    if (isSlide)
+                                    {
+                                        if (i != noteContent.Length - 1) // 1-3m[8:1]
+                                        {
+                                            isMineSlide |= noteContent[i + 1] == '[';
+                                        }
+                                        else // 1-3[8:1]m
+                                        {
+                                            isMineSlide = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        isMine = true;
+                                    }
+                                }
+                                continue;
+                        }
+                        dst[j++] = curChar;
+                    }
+
+                    isForceStar = forceStarTagCount > 0;
+                    isFakeRotate = forceStarTagCount > 1;
+
+                    return new NoteFlag(isTouchNote,
+                                        isBreak,
+                                        isBreakSlide,
+                                        isHanabi,
+                                        isHold,
+                                        isSlide,
+                                        isSlideNoHead,
+                                        isSlideNoHeadAndDelay,
+                                        isEx,
+                                        isForceStar,
+                                        isFakeRotate,
+                                        isMine,
+                                        isMineSlide,
+                                        dst.Slice(0, j));
+                }
+            }
         }
     }
 }
