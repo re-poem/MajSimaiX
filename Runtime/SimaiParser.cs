@@ -73,7 +73,7 @@ namespace MajSimai
                         {
                             continue;
                         }
-                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
                         buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
                         read += currentRead;
                     }
@@ -171,7 +171,7 @@ namespace MajSimai
                         {
                             continue;
                         }
-                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
                         Array.Copy(buffer, 0, contentBuffer, read, currentRead);
                         read += currentRead;
                     }
@@ -456,7 +456,7 @@ namespace MajSimai
                         {
                             continue;
                         }
-                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
                         buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
                         read += currentRead;
                     }
@@ -496,7 +496,7 @@ namespace MajSimai
                         {
                             continue;
                         }
-                        BufferHelper.EnsureBufferLength(contentBuffer.Length + currentRead, ref contentBuffer);
+                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
                         Array.Copy(buffer, 0, contentBuffer, read, currentRead);
                         read += currentRead;
                     }
