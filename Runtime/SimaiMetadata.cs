@@ -165,7 +165,7 @@ namespace MajSimai
 
             if (commands.Length != 0)
             {
-                commands = new SimaiCommand[commands.Length];
+                _commands = new SimaiCommand[commands.Length];
                 commands.CopyTo(_commands);
             }
         }

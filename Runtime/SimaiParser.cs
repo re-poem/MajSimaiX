@@ -77,7 +77,7 @@ namespace MajSimai
                         buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
                         read += currentRead;
                     }
-                    return Parse(contentBuffer.AsSpan(read));
+                    return Parse(contentBuffer.AsSpan(0, read));
                 }
                 finally
                 {
@@ -384,14 +384,14 @@ namespace MajSimai
                             }
                         }
                     }
-                    else if (maidataTxt.StartsWith("&"))
+                    else if (maidataTxt[0] == '&')
                     {
-                        if (!maidataTxt.Contains('=') || !SimaiCommand.TryParse(maidataTxt, out var cmd))
+                        if (!SimaiCommand.TryParse(maidataTxt, out var cmd))
                         {
                             throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt.ToString());
                         }
                         BufferHelper.EnsureBufferLength(cI + 1, ref commands);
-                        commands[i++] = cmd;
+                        commands[cI++] = cmd;
                     }
                 }
 
@@ -460,7 +460,7 @@ namespace MajSimai
                         buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
                         read += currentRead;
                     }
-                    return ParseMetadata(contentBuffer.AsSpan(read));
+                    return ParseMetadata(contentBuffer.AsSpan(0, read));
                 }
                 finally
                 {
@@ -500,7 +500,7 @@ namespace MajSimai
                         Array.Copy(buffer, 0, contentBuffer, read, currentRead);
                         read += currentRead;
                     }
-                    return await ParseMetadataAsync(contentBuffer.AsMemory(read));
+                    return await ParseMetadataAsync(contentBuffer.AsMemory(0, read));
                 }
                 finally
                 {
