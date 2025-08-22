@@ -32,14 +32,6 @@ namespace MajSimai
                          float offset, 
                          IEnumerable<SimaiChart>? levels, IEnumerable<SimaiCommand>? commands)
         {
-            if (levels is null)
-            {
-                throw new ArgumentNullException(nameof(levels));
-            }
-            if(commands is null)
-            {
-                throw new ArgumentNullException(nameof(commands));
-            }
             Title = title ?? string.Empty;
             Artist = artist ?? string.Empty;
             Offset = offset;
@@ -49,6 +41,10 @@ namespace MajSimai
             foreach (var c in levels ?? Array.Empty<SimaiChart>())
             {
                 _charts[i++] = c;
+                if(i == 7)
+                {
+                    break;
+                }
             }
             i = 0;
             _commands.AddRange(commands ?? Array.Empty<SimaiCommand>());
