@@ -157,9 +157,12 @@ namespace MajSimai
             outSimaiNote = default;
             Span<char> noteTextCopy = stackalloc char[noteText.Length];
             noteText.CopyTo(noteTextCopy);
+            var detectResult = NoteHelper.NoteFlag.Detect(noteText, noteTextCopy);
+            noteTextCopy = detectResult.NoteContent;
+
             var simaiNote = new SimaiNote();
 
-            if (NoteHelper.IsTouchNote(noteTextCopy))
+            if (detectResult.IsTouchNote)
             {
                 simaiNote.TouchArea = noteTextCopy[0];
                 if (simaiNote.TouchArea != 'C')
@@ -195,15 +198,12 @@ namespace MajSimai
                 }
                 simaiNote.Type = SimaiNoteType.Tap; //if nothing happen in following if
             }
-            if (noteTextCopy.Contains('f'))
-            {
-                simaiNote.IsHanabi = true;
-            }
+            simaiNote.IsHanabi = detectResult.IsHanabi;
 
             //hold
-            if (noteTextCopy.Contains('h'))
+            if (detectResult.IsHold)
             {
-                if (NoteHelper.IsTouchNote(noteTextCopy))
+                if (detectResult.IsTouchNote)
                 {
                     simaiNote.Type = SimaiNoteType.TouchHold;
                     if(NoteHelper.TryGetHoldTimeFromBeats(bpm, noteTextCopy, out var holdTime))
@@ -212,7 +212,7 @@ namespace MajSimai
                     }
                     else
                     {
-                        return false;
+                        simaiNote.HoldTime = 0;
                     }
                     //Console.WriteLine("Hold:" +simaiNote.touchArea+ simaiNote.startPosition + " TimeLastFor:" + simaiNote.holdTime);
                 }
@@ -231,7 +231,7 @@ namespace MajSimai
                         }
                         else
                         {
-                            return false;
+                            simaiNote.HoldTime = 0;
                         }
                     }
                     //Console.WriteLine("Hold:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.holdTime);
@@ -239,7 +239,7 @@ namespace MajSimai
             }
 
             //slide
-            if (NoteHelper.IsSlideNote(noteTextCopy))
+            if (detectResult.IsSlide)
             {
                 simaiNote.Type = SimaiNoteType.Slide;
                 if(!NoteHelper.TryGetSlideParams(bpm, noteTextCopy, out var slideParams))
@@ -248,70 +248,33 @@ namespace MajSimai
                 }
                 var (slideWaitTime, slideTime) = slideParams;
                 simaiNote.SlideTime = slideTime;
-                if (noteTextCopy.Contains('!'))
+                if (detectResult.IsSlideNoHead)
                 {
                     simaiNote.IsSlideNoHead = true;
-                    noteTextCopy = noteTextCopy.RemoveAll('!');
                     simaiNote.SlideStartTime = timing;
                 }
-                else if (noteTextCopy.Contains('?'))
+                else if (detectResult.IsSlideNoHeadAndDelay)
                 {
                     simaiNote.IsSlideNoHead = true;
-                    noteTextCopy = noteTextCopy.RemoveAll('?');
                     simaiNote.SlideStartTime = timing + slideWaitTime;
                 }
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
             }
 
             //break
-            if (noteTextCopy.Contains('b'))
-            {
-                if (simaiNote.Type == SimaiNoteType.Slide)
-                {
-                    (simaiNote.IsBreak, simaiNote.IsSlideBreak) = NoteHelper.CheckHeadOrSlide(noteTextCopy, 'b');
-                }
-                else
-                {
-                    // 除此之外的Break就无所谓了
-                    simaiNote.IsBreak = true;
-                }
-
-                noteTextCopy = noteTextCopy.RemoveAll('b');
-            }
+            simaiNote.IsBreak = detectResult.IsBreak;
+            simaiNote.IsSlideBreak = detectResult.IsBreakSlide;
 
             //EX
-            if (noteTextCopy.Contains('x'))
-            {
-                simaiNote.IsEx = true;
-                noteTextCopy = noteTextCopy.RemoveAll('x');
-            }
+            simaiNote.IsEx = detectResult.IsEx;
 
             //starHead
-            if (noteTextCopy.Contains('$'))
-            {
-                simaiNote.IsForceStar = true;
-                if (noteTextCopy.Count('$') == 2)
-                {
-                    simaiNote.IsFakeRotate = true;
-                }
-                noteTextCopy = noteTextCopy.RemoveAll('$');
-            }
+            simaiNote.IsForceStar = detectResult.IsForceStar;
+            simaiNote.IsFakeRotate = detectResult.IsFakeRotate;
 
-            if(noteTextCopy.Contains('m'))
-            {
-                if(simaiNote.Type == SimaiNoteType.Slide)
-                {
-                    var ret = NoteHelper.CheckHeadOrSlide(noteTextCopy, 'm');
-                    simaiNote.IsMine = ret.Item1;
-                    simaiNote.IsMineSlide = ret.Item2;
-                }
-                else
-                {
-                    // 除此之外的Mine就无所谓了
-                    simaiNote.IsMine = true;
-                }
-                noteTextCopy = noteTextCopy.RemoveAll('m');
-            }
+            // mine
+            simaiNote.IsMine = detectResult.IsMine;
+            simaiNote.IsMineSlide = detectResult.IsMineSlide;
 
             simaiNote.RawContent = new string(noteTextCopy.Trim());
             outSimaiNote = simaiNote;
@@ -514,7 +477,7 @@ namespace MajSimai
                 if (startIndex == -1 || endIndex == -1)
                 {
                     time = 0;
-                    return true;
+                    return false;
                 }
                 var holdParamsBody = noteText.Slice(startIndex + 1, endIndex - startIndex - 1);
                 Span<Range> ranges = stackalloc Range[2];
@@ -581,7 +544,7 @@ namespace MajSimai
                 return true;
             }
 
-            readonly ref struct NoteFlag
+            public readonly ref struct NoteFlag
             {
                 public readonly bool IsTouchNote;           // ABCDE
                 public readonly bool IsBreak;               // b
