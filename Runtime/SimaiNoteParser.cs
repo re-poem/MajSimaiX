@@ -44,8 +44,8 @@ namespace MajSimai
                 
                 try
                 {
-                    var ranges = rentedArray.AsSpan(0, tagCount);
-                    ranges.Clear();
+                    var ranges = rentedArray.AsSpan(0, tagCount + 1);
+                    noteContent.Split(ranges, '/');
 
                     if (tagCount != 0)
                     {
