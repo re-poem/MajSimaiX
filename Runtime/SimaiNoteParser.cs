@@ -394,7 +394,7 @@ namespace MajSimai
                     }
                 }
 
-                slideWaitTime = 1d / (customBpm ?? bpm / 60d);
+                slideWaitTime = 1d / ((customBpm ?? bpm) / 60d);
 
                 outParams = (slideWaitTime, slideTime);
                 return true;
