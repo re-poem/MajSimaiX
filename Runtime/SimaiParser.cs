@@ -352,6 +352,7 @@ namespace MajSimai
                                     i++;
                                     for (; i < lineCount; i++)
                                     {
+                                        var isEOF = false;
                                         range = ranges[i];
                                         maidataTxt = content[range].Trim();
                                         if (maidataTxt.IsEmpty)
@@ -367,10 +368,15 @@ namespace MajSimai
                                             ref readonly var current = ref maidataTxt[i2];
                                             if (current == 'E')
                                             {
+                                                isEOF = true;
                                                 break;
                                             }
                                             BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                             buffer[bufferIndex++] = current;
+                                        }
+                                        if(isEOF)
+                                        {
+                                            break;
                                         }
                                         BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                         buffer[bufferIndex++] = '\n';
