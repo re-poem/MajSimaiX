@@ -92,7 +92,7 @@ namespace MajSimai
             try
             {
                 content.AsSpan().CopyTo(buffer);
-                return ParseAsync(buffer.AsMemory(content.Length));
+                return ParseAsync(buffer.AsMemory(0, content.Length));
             }
             finally
             {
@@ -115,8 +115,13 @@ namespace MajSimai
                     var level = metadata.Levels[i];
                     rentedArrayForTasks[i] = ParseChartAsync(level, designer, fumen);
                 }
-                var waitAllTask = Task.WhenAll(rentedArrayForTasks);
-                await waitAllTask;
+                var tcs = new TaskCompletionSource<bool>();
+                _ = Task.WhenAll(rentedArrayForTasks).ContinueWith(_ =>
+                {
+                    tcs.TrySetResult(true);
+                });
+
+                await tcs.Task;
 
                 for (var i = 0; i < 7; i++)
                 {
@@ -361,16 +366,17 @@ namespace MajSimai
                                         }
                                         else if (maidataTxt[0] == '&')
                                         {
+                                            isEOF = true;
                                             break;
                                         }
                                         for (var i2 = 0; i2 < maidataTxt.Length; i2++)
                                         {
                                             ref readonly var current = ref maidataTxt[i2];
-                                            if (current == 'E')
-                                            {
-                                                isEOF = true;
-                                                break;
-                                            }
+                                            //if (current == 'E')
+                                            //{
+                                            //    isEOF = true;
+                                            //    break;
+                                            //}
                                             BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                             buffer[bufferIndex++] = current;
                                         }
