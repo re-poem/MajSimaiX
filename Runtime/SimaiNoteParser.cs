@@ -248,15 +248,16 @@ namespace MajSimai
                 }
                 var (slideWaitTime, slideTime) = slideParams;
                 simaiNote.SlideTime = slideTime;
+                simaiNote.SlideStartTime = timing + slideWaitTime;
                 if (detectResult.IsSlideNoHead)
                 {
                     simaiNote.IsSlideNoHead = true;
-                    simaiNote.SlideStartTime = timing;
+                    //simaiNote.SlideStartTime = timing;
                 }
                 else if (detectResult.IsSlideNoHeadAndDelay)
                 {
                     simaiNote.IsSlideNoHead = true;
-                    simaiNote.SlideStartTime = timing + slideWaitTime;
+                    //simaiNote.SlideStartTime = timing + slideWaitTime;
                 }
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
             }
@@ -661,7 +662,7 @@ namespace MajSimai
                                 continue;
                             case 'b':
                                 {
-                                    if (isBreak & isBreakSlide)
+                                    if (isBreak && isBreakSlide)
                                     {
                                         continue;
                                     }
@@ -684,7 +685,7 @@ namespace MajSimai
                                 continue;
                             case 'm':
                                 {
-                                    if (isMine & isMineSlide)
+                                    if (isMine && isMineSlide)
                                     {
                                         continue;
                                     }

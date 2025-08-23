@@ -13,6 +13,7 @@ namespace MajSimai
 {
     public static class SimaiParser
     {
+        readonly static Task<SimaiChart> SimaiChartCompletedTask = Task.FromResult(SimaiChart.Empty);
         #region Parse
         public static SimaiFile Parse(ReadOnlySpan<char> content)
         {
@@ -102,7 +103,7 @@ namespace MajSimai
         {
             var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
             var rentedArrayForTasks = ArrayPool<Task<SimaiChart>>.Shared.Rent(7);
-            Array.Fill(rentedArrayForTasks, Task.CompletedTask);
+            Array.Fill(rentedArrayForTasks, SimaiChartCompletedTask);
             try
             {
                 var metadata = await ParseMetadataAsync(content);
