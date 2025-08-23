@@ -647,7 +647,7 @@ namespace MajSimai
                                 break;
                             case 'x':
                                 isEx = true;
-                                break;
+                                continue;
                             case 'h':
                                 isHold = true;
                                 break;
