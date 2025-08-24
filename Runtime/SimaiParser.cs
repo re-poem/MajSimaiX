@@ -917,7 +917,7 @@ namespace MajSimai
                             noteContentBufIndex = 0;
                         }
                         BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
-                        commaTimingBuffer[commaTimingBufIndex + 1] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, i);
+                        commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, i);
 
                         time += 1d / (bpm / 60d) * 4d / beats;
                         //Console.WriteLine(time);
@@ -940,7 +940,11 @@ namespace MajSimai
                     noteTimingPoints[i] = timingPoint;
                 });
 
-                return new SimaiChart(level, designer, fumen.ToString(), noteTimingPoints, commaTimingBuffer);
+                return new SimaiChart(level, 
+                                      designer, 
+                                      fumen.ToString(), 
+                                      noteTimingPoints.AsSpan(0, noteRawTimingBufIndex), 
+                                      commaTimingBuffer.AsSpan(0, commaTimingBufIndex));
             }
             catch (InvalidSimaiMarkupException)
             {

@@ -2,6 +2,7 @@
 using System;
 using System.Buffers;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 namespace MajSimai
 {
@@ -45,8 +46,12 @@ namespace MajSimai
         readonly SimaiTimingPoint[] _noteTimings;
         readonly SimaiTimingPoint[] _commaTimings;
         public SimaiChart(string level, string designer, string fumen,
-                          IEnumerable<SimaiTimingPoint>? noteTimings,
-                          IEnumerable<SimaiTimingPoint>? commaTimings = null)
+                          ReadOnlySpan<SimaiTimingPoint> noteTimings): this(level, designer, fumen, noteTimings, ReadOnlySpan<SimaiTimingPoint>.Empty)
+        { 
+        }
+        public SimaiChart(string level, string designer, string fumen,
+                          ReadOnlySpan<SimaiTimingPoint> noteTimings,
+                          ReadOnlySpan<SimaiTimingPoint> commaTimings)
         {
             if(level is null)
             {
@@ -65,8 +70,12 @@ namespace MajSimai
             
             try
             {
-                foreach (var n in noteTimings ?? Array.Empty<SimaiTimingPoint>())
+                foreach (var n in noteTimings)
                 {
+                    if (n is null)
+                    {
+                        throw new ArgumentException(nameof(noteTimings));
+                    }
                     BufferHelper.EnsureBufferLength(i + 1, ref buffer);
                     buffer[i++] = n;
                 }
@@ -81,8 +90,12 @@ namespace MajSimai
                 }
                 i = 0;
 
-                foreach (var n in commaTimings ?? Array.Empty<SimaiTimingPoint>())
+                foreach (var n in commaTimings)
                 {
+                    if(n is null)
+                    {
+                        throw new ArgumentException(nameof(commaTimings));
+                    }
                     BufferHelper.EnsureBufferLength(i + 1, ref buffer);
                     buffer[i++] = n;
                 }
@@ -108,5 +121,64 @@ namespace MajSimai
             _commaTimings = Array.Empty<SimaiTimingPoint>();
             _isEmpty = true;
         }
+
+#if NET5_0_OR_GREATER
+        internal unsafe MajSimai.Unmanaged.UnmanagedSimaiChart ToUnmanaged()
+        {
+            var levelPtr = (char*)null;
+            var designerPtr = (char*)null;
+            var fumenPtr = (char*)null;
+            var noteTimingArray = (MajSimai.Unmanaged.UnmanagedSimaiTimingPoint*)null;
+            var commaTimingArray = (MajSimai.Unmanaged.UnmanagedSimaiTimingPoint*)null;
+
+            if (!string.IsNullOrEmpty(Level))
+            {
+                levelPtr = (char*)Marshal.StringToHGlobalAnsi(Level);
+            }
+            if (!string.IsNullOrEmpty(Designer))
+            {
+                designerPtr = (char*)Marshal.StringToHGlobalAnsi(Designer);
+            }
+            if (!string.IsNullOrEmpty(Fumen))
+            {
+                fumenPtr = (char*)Marshal.StringToHGlobalAnsi(Fumen);
+            }
+            if(!NoteTimings.IsEmpty)
+            {
+                noteTimingArray = (MajSimai.Unmanaged.UnmanagedSimaiTimingPoint*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiTimingPoint) * NoteTimings.Length);
+                for (var i = 0; i < NoteTimings.Length; i++)
+                {
+                    *(noteTimingArray + i) = NoteTimings[i].ToUnmanaged();
+                }
+            }
+            if (!CommaTimings.IsEmpty)
+            {
+                commaTimingArray = (MajSimai.Unmanaged.UnmanagedSimaiTimingPoint*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiTimingPoint) * CommaTimings.Length);
+                for (var i = 0; i < CommaTimings.Length; i++)
+                {
+                    *(commaTimingArray + i) = CommaTimings[i].ToUnmanaged();
+                }
+            }
+            return new()
+            {
+                level = levelPtr,
+                levelLen = Level.Length,
+
+                designer = designerPtr,
+                designerLen = Designer.Length,
+
+                isEmpty = IsEmpty,
+
+                fumen = fumenPtr,
+                fumenLen = Fumen.Length,
+
+                noteTimings = noteTimingArray,
+                noteTimingsLen = NoteTimings.Length,
+
+                commaTimings = commaTimingArray,
+                commaTimingsLen = CommaTimings.Length
+            };
+        }
+#endif
     }
 }

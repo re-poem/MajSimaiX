@@ -1,5 +1,6 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.Runtime.InteropServices;
 using System.Text;
 
 namespace MajSimai
@@ -67,5 +68,29 @@ namespace MajSimai
         {
             return new KeyValuePair<string, string>(cmd.Prefix, cmd.Value);
         }
+#if NET5_0_OR_GREATER
+        internal unsafe MajSimai.Unmanaged.UnmanagedSimaiCommand ToUnmanaged()
+        {
+            var prefixPtr = (char*)null;
+            var valuePtr = (char*)null;
+
+            if(!string.IsNullOrEmpty(Prefix))
+            {
+                prefixPtr = (char*)Marshal.StringToHGlobalAnsi(Prefix);
+            }
+            if (!string.IsNullOrEmpty(Value))
+            {
+                valuePtr = (char*)Marshal.StringToHGlobalAnsi(Value);
+            }
+            return new()
+            {
+                prefix = prefixPtr,
+                prefixLen = Prefix.Length,
+
+                value = valuePtr,
+                valueLen = Value.Length
+            };
+        }
+#endif
     }
 }

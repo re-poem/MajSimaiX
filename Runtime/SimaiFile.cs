@@ -1,6 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
+using System.ComponentModel.Design;
 using System.IO;
+using System.Reflection.Emit;
+using System.Runtime.InteropServices;
 using System.Text;
 namespace MajSimai
 {
@@ -74,5 +77,52 @@ namespace MajSimai
 
             return new SimaiFile(title, artist, 0, emptyCharts, Array.Empty<SimaiCommand>());
         }
+#if NET5_0_OR_GREATER
+        internal unsafe MajSimai.Unmanaged.UnmanagedSimaiFile ToUnmanaged()
+        {
+            var titlePtr = (char*)null;
+            var artistPtr = (char*)null;
+            var chartArray = (MajSimai.Unmanaged.UnmanagedSimaiChart*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiChart) * 7);
+            var commandArray = (MajSimai.Unmanaged.UnmanagedSimaiCommand*)null;
+
+            if (!string.IsNullOrEmpty(Title))
+            {
+                titlePtr = (char*)Marshal.StringToHGlobalAnsi(Title);
+            }
+            if (!string.IsNullOrEmpty(Artist))
+            {
+                artistPtr = (char*)Marshal.StringToHGlobalAnsi(Artist);
+            }
+            for (var i = 0; i < 7; i++)
+            {
+                *(chartArray + 1) = _charts[i].ToUnmanaged();
+            }
+            if(_commands.Count != 0)
+            {
+                commandArray = (MajSimai.Unmanaged.UnmanagedSimaiCommand*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiCommand) * _commands.Count);
+                for (var i = 0; i < _commands.Count; i++)
+                {
+                    *(commandArray + 1) = _commands[i].ToUnmanaged();
+                }
+            }
+
+            return new()
+            {
+                title = titlePtr,
+                titleLen = Title.Length,
+
+                artist = artistPtr,
+                artistLen = Artist.Length,
+
+                offset = Offset,
+
+                charts = chartArray,
+                chartsLen = Charts.Length,
+
+                commands = commandArray,
+                commandsLen = _commands.Count,
+            };
+        }
+#endif
     }
 }

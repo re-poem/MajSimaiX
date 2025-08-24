@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.InteropServices;
 
 namespace MajSimai
 {
@@ -61,5 +62,38 @@ namespace MajSimai
                 Notes = notes;
             }
         }
+#if NET5_0_OR_GREATER
+        internal unsafe MajSimai.Unmanaged.UnmanagedSimaiTimingPoint ToUnmanaged()
+        {
+            var rawContentPtr = (char*)null;
+            var noteArray = (MajSimai.Unmanaged.UnmanagedSimaiNote*)null;
+
+            if (!string.IsNullOrEmpty(RawContent))
+            {
+                rawContentPtr = (char*)Marshal.StringToHGlobalAnsi(RawContent);
+            }
+            if (Notes.Length != 0)
+            {
+                noteArray = (MajSimai.Unmanaged.UnmanagedSimaiNote*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiNote) * Notes.Length);
+                for (var i = 0; i < Notes.Length; i++)
+                {
+                    *(noteArray + i) = Notes[i].ToUnmanaged();
+                }
+            }
+            return new()
+            {
+                timing = Timing,
+                bpm = Bpm,
+                hSpeed = HSpeed,
+                rawTextPositionX = RawTextPositionX,
+                rawTextPositionY = RawTextPositionY,
+                rawTextPosition = RawTextPosition,
+                rawContent = rawContentPtr,
+                rawContentLen = RawContent.Length,
+                notes = noteArray,
+                notesLen = Notes.Length
+            };
+        }
+#endif
     }
 }
