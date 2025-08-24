@@ -1,4 +1,4 @@
-﻿using MajSimai.Runtime.Utils;
+﻿using MajSimai.Utils;
 using System;
 using System.Buffers;
 using System.Collections.Generic;
