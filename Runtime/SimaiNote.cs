@@ -24,7 +24,7 @@ namespace MajSimai
         public double SlideTime { get; set; }
         public char TouchArea { get; set; } = ' ';
 
-#if NET5_0_OR_GREATER
+#if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiNote ToUnmanaged()
         {
             var rawContentPtr = (char*)null;

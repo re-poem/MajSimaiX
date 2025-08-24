@@ -77,7 +77,7 @@ namespace MajSimai
 
             return new SimaiFile(title, artist, 0, emptyCharts, Array.Empty<SimaiCommand>());
         }
-#if NET5_0_OR_GREATER
+#if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiFile ToUnmanaged()
         {
             var titlePtr = (char*)null;

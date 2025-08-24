@@ -62,7 +62,7 @@ namespace MajSimai
                 Notes = notes;
             }
         }
-#if NET5_0_OR_GREATER
+#if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiTimingPoint ToUnmanaged()
         {
             var rawContentPtr = (char*)null;

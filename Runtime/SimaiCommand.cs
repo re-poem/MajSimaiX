@@ -68,7 +68,7 @@ namespace MajSimai
         {
             return new KeyValuePair<string, string>(cmd.Prefix, cmd.Value);
         }
-#if NET5_0_OR_GREATER
+#if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiCommand ToUnmanaged()
         {
             var prefixPtr = (char*)null;

@@ -122,7 +122,7 @@ namespace MajSimai
             _isEmpty = true;
         }
 
-#if NET5_0_OR_GREATER
+#if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiChart ToUnmanaged()
         {
             var levelPtr = (char*)null;
