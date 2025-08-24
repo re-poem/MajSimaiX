@@ -16,13 +16,11 @@ internal unsafe struct UnmanagedSimaiTimingPoint
     public int rawTextPositionX;
     public int rawTextPositionY;
     public int rawTextPosition;
-
+    public int notesLen;
+    public int rawContentLen;
     public bool isEmpty;
 
     public UnmanagedSimaiNote* notes;
-    public int notesLen;
-
     public char* rawContent;
-    public int rawContentLen;
 }
 #endif

@@ -10,22 +10,19 @@ namespace MajSimai.Unmanaged;
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct UnmanagedSimaiChart
 {
-    public char* level;
     public int levelLen;
-
-    public char* designer;
     public int designerLen;
-
-    public char* fumen;
     public int fumenLen;
-
+    public int noteTimingsLen;
+    public int commaTimingsLen;
     public bool isEmpty;
 
+    public char* level;
+    public char* designer;
+    public char* fumen;
     public UnmanagedSimaiTimingPoint* noteTimings;
-    public int noteTimingsLen;
-
     public UnmanagedSimaiTimingPoint* commaTimings;
-    public int commaTimingsLen;
+    
 
     public readonly static UnmanagedSimaiChart Empty = new()
     {

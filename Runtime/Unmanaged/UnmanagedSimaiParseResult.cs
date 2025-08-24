@@ -17,12 +17,12 @@ public unsafe ref struct UnmanagedSimaiParseResult
     public const int CODE_INVALID_SIMAI_SYNTAX = 4;
 
     public required int code;
-    public void* simaiFile = null;
-
     public int errorAtLine = -1;
     public int errorAtColumn = -1;
-    public char* errorMsgAnsi = null;
     public int errorMsgLen = 0;
+
+    public void* simaiFile = null;
+    public char* errorMsgAnsi = null;
 
     public UnmanagedSimaiParseResult()
     {

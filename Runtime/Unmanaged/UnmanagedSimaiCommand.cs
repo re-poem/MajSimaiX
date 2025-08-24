@@ -10,10 +10,10 @@ namespace MajSimai.Unmanaged;
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct UnmanagedSimaiCommand
 {
-    public char* prefix;
     public int prefixLen;
-
-    public char* value;
     public int valueLen;
+
+    public char* prefix;
+    public char* value;
 }
 #endif

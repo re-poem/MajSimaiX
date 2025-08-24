@@ -10,18 +10,15 @@ namespace MajSimai.Unmanaged;
 [StructLayout(LayoutKind.Sequential)]
 internal unsafe struct UnmanagedSimaiFile
 {
-    public char* title;
     public int titleLen;
-
-    public char* artist;
     public int artistLen;
-
     public float offset;
-
-    public UnmanagedSimaiChart* charts;
     public int chartsLen;
-
-    public UnmanagedSimaiCommand* commands;
     public int commandsLen;
+
+    public char* title;
+    public char* artist;
+    public UnmanagedSimaiChart* charts;
+    public UnmanagedSimaiCommand* commands;
 }
 #endif

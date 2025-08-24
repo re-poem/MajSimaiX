@@ -95,14 +95,14 @@ namespace MajSimai
             }
             for (var i = 0; i < 7; i++)
             {
-                *(chartArray + 1) = _charts[i].ToUnmanaged();
+                *(chartArray + i) = _charts[i].ToUnmanaged();
             }
             if(_commands.Count != 0)
             {
                 commandArray = (MajSimai.Unmanaged.UnmanagedSimaiCommand*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiCommand) * _commands.Count);
                 for (var i = 0; i < _commands.Count; i++)
                 {
-                    *(commandArray + 1) = _commands[i].ToUnmanaged();
+                    *(commandArray + i) = _commands[i].ToUnmanaged();
                 }
             }
 
