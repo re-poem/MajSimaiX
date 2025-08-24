@@ -970,22 +970,6 @@ namespace MajSimai
             await writer.WriteAsync(fumen);
         }
         #endregion
-
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static string GetValue(string varline)
-        {
-            return varline.Substring(varline.IndexOf("=") + 1).Trim();
-        }
-        [MethodImpl(MethodImplOptions.AggressiveInlining)]
-        private static ReadOnlySpan<char> GetValue(ReadOnlySpan<char> varline)
-        {
-            var index = varline.IndexOf('=');
-            if (index == -1)
-            {
-                return ReadOnlySpan<char>.Empty;
-            }
-            return varline.Slice(index + 1).Trim();
-        }
         static class MD5Helper
         {
             public static byte[] ComputeHash(byte[] data)
