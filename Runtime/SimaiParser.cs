@@ -7,17 +7,25 @@ using System.Runtime.CompilerServices;
 using System.Runtime.InteropServices;
 using System.Security.Cryptography;
 using System.Text;
+using System.Text.Json;
 using System.Threading.Tasks;
 
 namespace MajSimai
 {
+    /// <summary>
+    /// Provides methods to parse simai file
+    /// </summary>
     public static class SimaiParser
     {
         readonly static Task<SimaiChart> SimaiChartCompletedTask = Task.FromResult(SimaiChart.Empty);
         #region Parse
+        /// <summary>
+        /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiFile"/>.
+        /// </summary>
+        /// <param name="content">Simai text</param>
+        /// <returns></returns>
         public static SimaiFile Parse(ReadOnlySpan<char> content)
         {
-
             var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
             try
             {
@@ -54,10 +62,20 @@ namespace MajSimai
                 ArrayPool<SimaiChart>.Shared.Return(rentedArrayForCharts);
             }
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using UTF-8 encoding and parse it into <seealso cref="SimaiFile"/>. The Stream will be read to completion.
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
         public static SimaiFile Parse(Stream contentStream)
         {
             return Parse(contentStream, Encoding.UTF8);
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using <paramref name="encoding"/> and parse it into <seealso cref="SimaiFile"/>. The Stream will be read to completion.
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
         public static SimaiFile Parse(Stream contentStream, Encoding encoding)
         {
             using (var decodeStream = new StreamReader(contentStream, encoding))
@@ -86,6 +104,11 @@ namespace MajSimai
                 }
             }
         }
+        /// <summary>
+        /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiFile"/>.
+        /// </summary>
+        /// <param name="content">Simai text</param>
+        /// <returns></returns>
         public static Task<SimaiFile> ParseAsync(string content)
         {
             var buffer = ArrayPool<char>.Shared.Rent(content.Length);
@@ -99,6 +122,11 @@ namespace MajSimai
                 ArrayPool<char>.Shared.Return(buffer);
             }
         }
+        /// <summary>
+        /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiFile"/>.
+        /// </summary>
+        /// <param name="content">Simai text</param>
+        /// <returns></returns>
         public static async Task<SimaiFile> ParseAsync(ReadOnlyMemory<char> content)
         {
             var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
@@ -156,10 +184,20 @@ namespace MajSimai
                 ArrayPool<Task<SimaiChart>>.Shared.Return(rentedArrayForTasks);
             }
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using UTF-8 encoding and parse it into <seealso cref="SimaiFile"/>. The Stream will be read to completion.
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
         public static Task<SimaiFile> ParseAsync(Stream contentStream)
         {
             return ParseAsync(contentStream, Encoding.UTF8);
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using <paramref name="encoding"/> and parse it into <seealso cref="SimaiFile"/>. The Stream will be read to completion.
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
         public static async Task<SimaiFile> ParseAsync(Stream contentStream, Encoding encoding)
         {
 
@@ -192,6 +230,12 @@ namespace MajSimai
         }
         #endregion
         #region ParseMetadata
+        /// <summary>
+        /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
+        /// </summary>
+        /// <param name="content">Simai text</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(ReadOnlySpan<char> content)
         {
             static void SetValue(ReadOnlySpan<char> value, ref string valueStr)
@@ -435,10 +479,23 @@ namespace MajSimai
                 ArrayPool<SimaiCommand>.Shared.Return(commands);
             }
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using UTF-8 encoding and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(Stream contentStream)
         {
             return ParseMetadata(contentStream, Encoding.UTF8);
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using <paramref name="encoding"/> and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed. 
+        /// <para>The Stream will be read to completion.</para>
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(Stream contentStream, Encoding encoding)
         {
             using (var decodeStream = new StreamReader(contentStream, encoding))
@@ -467,18 +524,45 @@ namespace MajSimai
                 }
             }
         }
+        /// <summary>
+        /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
+        /// <para>The Stream will be read to completion.</para>
+        /// </summary>
+        /// <param name="content">Simai text</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static Task<SimaiMetadata> ParseMetadataAsync(string content)
         {
             return Task.Run(() => ParseMetadata(content));
         }
+        /// <summary>
+        /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
+        /// </summary>
+        /// <param name="content">Simai text</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static Task<SimaiMetadata> ParseMetadataAsync(ReadOnlyMemory<char> content)
         {
             return Task.Run(() => ParseMetadata(content.Span));
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using UTF-8 encoding and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
+        /// <para>The Stream will be read to completion.</para>
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream)
         {
             return ParseMetadataAsync(contentStream, Encoding.UTF8);
         }
+        /// <summary>
+        /// Read simai text from <paramref name="contentStream"/> using <paramref name="encoding"/> and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed. 
+        /// <para>The Stream will be read to completion.</para>
+        /// </summary>
+        /// <param name="contentStream">Provide simai content</param>
+        /// <returns></returns>
+        /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static async Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream, Encoding encoding)
         {
             using (var decodeStream = new StreamReader(contentStream, encoding))
@@ -510,11 +594,23 @@ namespace MajSimai
         }
         #endregion
         #region ParseChart
+        /// <summary>
+        /// Read simai chart from <paramref name="fumen"/> and parse it into <seealso cref="SimaiChart"/>
+        /// </summary>
+        /// <param name="fumen">Simai chart</param>
+        /// <returns></returns>
         [MethodImpl(MethodImplOptions.AggressiveInlining)]
         public static SimaiChart ParseChart(ReadOnlySpan<char> fumen)
         {
             return ParseChart(string.Empty, string.Empty, fumen);
         }
+        /// <summary>
+        /// Read simai chart from <paramref name="fumen"/> and parse it into <seealso cref="SimaiChart"/>
+        /// </summary>
+        /// <param name="level">Level of simai chart</param>
+        /// <param name="designer">designer of simai chart</param>
+        /// <param name="fumen">Simai chart</param>
+        /// <returns></returns>
         public static SimaiChart ParseChart(string level, string designer, ReadOnlySpan<char> fumen)
         {
             static bool IsNote(char c)
@@ -864,18 +960,42 @@ namespace MajSimai
                 ArrayPool<SimaiTimingPoint>.Shared.Return(commaTimingBuffer);
             }
         }
+        /// <summary>
+        /// Read simai chart from <paramref name="fumen"/> and parse it into <seealso cref="SimaiChart"/>
+        /// </summary>
+        /// <param name="fumen">Simai chart</param>
+        /// <returns></returns>
         public static Task<SimaiChart> ParseChartAsync(string fumen)
         {
             return Task.Run(() => ParseChart(string.Empty, string.Empty, fumen));
         }
+        /// <summary>
+        /// Read simai chart from <paramref name="fumen"/> and parse it into <seealso cref="SimaiChart"/>
+        /// </summary>
+        /// <param name="fumen">Simai chart</param>
+        /// <returns></returns>
         public static Task<SimaiChart> ParseChartAsync(ReadOnlyMemory<char> fumen)
         {
             return Task.Run(() => ParseChart(string.Empty, string.Empty, fumen.Span));
         }
+        /// <summary>
+        /// Read simai chart from <paramref name="fumen"/> and parse it into <seealso cref="SimaiChart"/>
+        /// </summary>
+        /// <param name="level">Level of simai chart</param>
+        /// <param name="designer">designer of simai chart</param>
+        /// <param name="fumen">Simai chart</param>
+        /// <returns></returns>
         public static Task<SimaiChart> ParseChartAsync(string level, string designer, ReadOnlyMemory<char> fumen)
         {
             return Task.Run(() => ParseChart(level, designer, fumen.Span));
         }
+        /// <summary>
+        /// Read simai chart from <paramref name="fumen"/> and parse it into <seealso cref="SimaiChart"/>
+        /// </summary>
+        /// <param name="level">Level of simai chart</param>
+        /// <param name="designer">designer of simai chart</param>
+        /// <param name="fumen">Simai chart</param>
+        /// <returns></returns>
         public static Task<SimaiChart> ParseChartAsync(string level, string designer, string fumen)
         {
             return Task.Run(() => ParseChart(level, designer, fumen));
