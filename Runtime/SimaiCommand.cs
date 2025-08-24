@@ -10,10 +10,18 @@ namespace MajSimai
         public string Value { get; }
 
         readonly int _hashCode;
-        public SimaiCommand(string prefix, string value)
+        public SimaiCommand(string prefix, string? value)
         {
+            if (prefix is null)
+            {
+                throw new ArgumentNullException(nameof(prefix));
+            }
+            else if (prefix.Length == 0)
+            {
+                throw new ArgumentException("\"prefix\" cannot be empty", nameof(prefix));
+            }
             Prefix = prefix;
-            Value = value;
+            Value = value ?? string.Empty;
             _hashCode = HashCode.Combine(prefix, value);
         }
 

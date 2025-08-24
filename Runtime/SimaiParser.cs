@@ -194,14 +194,13 @@ namespace MajSimai
         #region ParseMetadata
         public static SimaiMetadata ParseMetadata(ReadOnlySpan<char> content)
         {
-            static void SetValue(ReadOnlySpan<char> kvStr, ref string valueStr)
+            static void SetValue(ReadOnlySpan<char> value, ref string valueStr)
             {
                 if (!string.IsNullOrEmpty(valueStr))
                 {
                     return;
                 }
-                var value = SimaiParser.GetValue(kvStr);
-                if (value.Length == 0)
+                else if (value.Length == 0)
                 {
                     return;
                 }
@@ -235,124 +234,121 @@ namespace MajSimai
                 {
                     var range = ranges[i];
                     var maidataTxt = content[range].Trim();
-                    if (maidataTxt.IsEmpty)
+                    var tagIndex = maidataTxt.IndexOf('=');
+                    if(maidataTxt.IsEmpty || maidataTxt[0] != '&')
                     {
                         continue;
                     }
-
-                    if (maidataTxt.StartsWith("&title="))
+                    else if (tagIndex == -1)
                     {
-                        SetValue(maidataTxt, ref title);
+                        throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt.ToString());
                     }
-                    else if (maidataTxt.StartsWith("&artist="))
+                    var prefixStr = maidataTxt[1..tagIndex];
+                    var valueStr = maidataTxt[(tagIndex + 1)..];
+                    if (prefixStr.IsEmpty)
                     {
-                        SetValue(maidataTxt, ref artist);
+                        continue;
                     }
-                    else if (maidataTxt.StartsWith("&des"))
+                    var prefix = new string(prefixStr);
+                    var inotePrefix = 0;
+                    switch (prefix)
                     {
-                        if (maidataTxt.StartsWith("&des="))
-                        {
-                            SetValue(maidataTxt, ref designer);
-                        }
-                        else
-                        {
-                            const string DES_1_STRING = "&des_1=";
-                            const string DES_2_STRING = "&des_2=";
-                            const string DES_3_STRING = "&des_3=";
-                            const string DES_4_STRING = "&des_4=";
-                            const string DES_5_STRING = "&des_5=";
-                            const string DES_6_STRING = "&des_6=";
-                            const string DES_7_STRING = "&des_7=";
-                            for (var j = 0; j < 7; j++)
+                        case "title":
+                            SetValue(valueStr, ref title);
+                            break;
+                        case "artist":
+                            SetValue(valueStr, ref artist);
+                            break;
+                        case "des":
+                            SetValue(valueStr, ref designer);
+                            break;
+                        case "des_1":
+                            SetValue(valueStr, ref designers[0]);
+                            break;
+                        case "des_2":
+                            SetValue(valueStr, ref designers[1]);
+                            break;
+                        case "des_3":
+                            SetValue(valueStr, ref designers[2]);
+                            break;
+                        case "des_4":
+                            SetValue(valueStr, ref designers[3]);
+                            break;
+                        case "des_5":
+                            SetValue(valueStr, ref designers[4]);
+                            break;
+                        case "des_6":
+                            SetValue(valueStr, ref designers[5]);
+                            break;
+                        case "des_7":
+                            SetValue(valueStr, ref designers[6]);
+                            break;
+                        case "first":
+                            if (!float.TryParse(valueStr, out first))
                             {
-                                var desPrefix = j switch
+                                first = 0;
+                            }
+                            break;
+                        case "lv_1":
+                            SetValue(valueStr, ref levels[0]);
+                            break;
+                        case "lv_2":
+                            SetValue(valueStr, ref levels[1]);
+                            break;
+                        case "lv_3":
+                            SetValue(valueStr, ref levels[2]);
+                            break;
+                        case "lv_4":
+                            SetValue(valueStr, ref levels[3]);
+                            break;
+                        case "lv_5":
+                            SetValue(valueStr, ref levels[4]);
+                            break;
+                        case "lv_6":
+                            SetValue(valueStr, ref levels[5]);
+                            break;
+                        case "lv_7":
+                            SetValue(valueStr, ref levels[6]);
+                            break;
+                        case "inote_1":
+                            inotePrefix = 1;
+                            goto INOTE_PROCESSOR;
+                        case "inote_2":
+                            inotePrefix = 2;
+                            goto INOTE_PROCESSOR;
+                        case "inote_3":
+                            inotePrefix = 3;
+                            goto INOTE_PROCESSOR;
+                        case "inote_4":
+                            inotePrefix = 4;
+                            goto INOTE_PROCESSOR;
+                        case "inote_5":
+                            inotePrefix = 5;
+                            goto INOTE_PROCESSOR;
+                        case "inote_6":
+                            inotePrefix = 6;
+                            goto INOTE_PROCESSOR;
+                        case "inote_7":
+                            inotePrefix = 7;
+                            goto INOTE_PROCESSOR;
+                        default:
+                            BufferHelper.EnsureBufferLength(cI + 1, ref commands);
+                            commands[cI++] = new SimaiCommand(prefix, new string(valueStr));
+                            break;
+                        INOTE_PROCESSOR:
+                            {
+                                if (inotePrefix == 0)
                                 {
-                                    0 => DES_1_STRING,
-                                    1 => DES_2_STRING,
-                                    2 => DES_3_STRING,
-                                    3 => DES_4_STRING,
-                                    4 => DES_5_STRING,
-                                    5 => DES_6_STRING,
-                                    6 => DES_7_STRING,
-                                    _ => throw new ArgumentOutOfRangeException()
-                                };
-                                if (maidataTxt.StartsWith(desPrefix))
-                                {
-                                    SetValue(maidataTxt, ref designers[j]);
+                                    throw new ArgumentOutOfRangeException();
                                 }
-                            }
-                        }
-
-                    }
-                    else if (maidataTxt.StartsWith("&first="))
-                    {
-                        if (!float.TryParse(GetValue(maidataTxt), out first))
-                        {
-                            first = 0;
-                        }
-                    }
-                    else if (maidataTxt.StartsWith("&lv_"))
-                    {
-                        const string LV_1_STRING = "&lv_1=";
-                        const string LV_2_STRING = "&lv_2=";
-                        const string LV_3_STRING = "&lv_3=";
-                        const string LV_4_STRING = "&lv_4=";
-                        const string LV_5_STRING = "&lv_5=";
-                        const string LV_6_STRING = "&lv_6=";
-                        const string LV_7_STRING = "&lv_7=";
-                        for (var j = 1; j < 8; j++)
-                        {
-                            var lvPrefix = j switch
-                            {
-                                1 => LV_1_STRING,
-                                2 => LV_2_STRING,
-                                3 => LV_3_STRING,
-                                4 => LV_4_STRING,
-                                5 => LV_5_STRING,
-                                6 => LV_6_STRING,
-                                7 => LV_7_STRING,
-                                _ => throw new ArgumentOutOfRangeException()
-                            };
-                            if (maidataTxt.StartsWith(lvPrefix))
-                            {
-                                SetValue(maidataTxt, ref levels[j - 1]);
-                            }
-                        }
-                    }
-                    else if (maidataTxt.StartsWith("&inote_"))
-                    {
-                        const string INOTE_1_STRING = "&inote_1=";
-                        const string INOTE_2_STRING = "&inote_2=";
-                        const string INOTE_3_STRING = "&inote_3=";
-                        const string INOTE_4_STRING = "&inote_4=";
-                        const string INOTE_5_STRING = "&inote_5=";
-                        const string INOTE_6_STRING = "&inote_6=";
-                        const string INOTE_7_STRING = "&inote_7=";
-
-                        for (var j = 1; j < 8; j++)
-                        {
-                            var inotePrefix = j switch
-                            {
-                                1 => INOTE_1_STRING,
-                                2 => INOTE_2_STRING,
-                                3 => INOTE_3_STRING,
-                                4 => INOTE_4_STRING,
-                                5 => INOTE_5_STRING,
-                                6 => INOTE_6_STRING,
-                                7 => INOTE_7_STRING,
-                                _ => throw new ArgumentOutOfRangeException()
-                            };
-                            if (maidataTxt.StartsWith(inotePrefix))
-                            {
                                 var buffer = ArrayPool<char>.Shared.Rent(32);
                                 try
                                 {
                                     Array.Clear(buffer, 0, buffer.Length);
                                     var bufferIndex = 0;
-                                    var value = GetValue(maidataTxt);
-                                    BufferHelper.EnsureBufferLength(value.Length + 1, ref buffer);
-                                    value.CopyTo(buffer);
-                                    bufferIndex += value.Length;
+                                    BufferHelper.EnsureBufferLength(valueStr.Length + 1, ref buffer);
+                                    valueStr.CopyTo(buffer);
+                                    bufferIndex += valueStr.Length;
                                     buffer[bufferIndex++] = '\n';
                                     i++;
                                     for (; i < lineCount; i++)
@@ -367,6 +363,7 @@ namespace MajSimai
                                         else if (maidataTxt[0] == '&')
                                         {
                                             isEOF = true;
+                                            i--;
                                             break;
                                         }
                                         for (var i2 = 0; i2 < maidataTxt.Length; i2++)
@@ -380,35 +377,24 @@ namespace MajSimai
                                             BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                             buffer[bufferIndex++] = current;
                                         }
-                                        if(isEOF)
-                                        {
-                                            break;
-                                        }
+                                        //if (isEOF)
+                                        //{
+                                        //    break;
+                                        //}
                                         BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                         buffer[bufferIndex++] = '\n';
                                     }
 
-                                    fumens[j - 1] = new string(buffer.AsSpan(0, bufferIndex).Trim());
+                                    fumens[inotePrefix - 1] = new string(buffer.AsSpan(0, bufferIndex).Trim());
                                 }
                                 finally
                                 {
                                     ArrayPool<char>.Shared.Return(buffer);
                                 }
                             }
-                        }
-                    }
-                    else if (maidataTxt[0] == '&')
-                    {
-                        if (!SimaiCommand.TryParse(maidataTxt, out var cmd))
-                        {
-                            throw new InvalidSimaiMarkupException(i + 1, 0, maidataTxt.ToString());
-                        }
-                        BufferHelper.EnsureBufferLength(cI + 1, ref commands);
-                        commands[cI++] = cmd;
+                            break;
                     }
                 }
-
-
                 if (!string.IsNullOrEmpty(designer))
                 {
                     for (var j = 0; j < 7; j++)
