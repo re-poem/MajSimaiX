@@ -9,7 +9,7 @@ using System.Threading.Tasks;
 namespace MajSimai.Unmanaged;
 public unsafe class UnmanagedSimaiParser
 {
-    [UnmanagedCallersOnly(EntryPoint = "Parse")]
+    [UnmanagedCallersOnly(EntryPoint = "MajSimai_Parse")]
     public static void Parse(char* contentAnsi, int contentAnsiLen, UnmanagedSimaiParseResult* result)
     {
         var content = Marshal.PtrToStringAnsi((nint)contentAnsi, contentAnsiLen);
@@ -49,11 +49,32 @@ public unsafe class UnmanagedSimaiParser
             };
         }
     }
-    [UnmanagedCallersOnly(EntryPoint = "Free")]
+    [UnmanagedCallersOnly(EntryPoint = "MajSimai_Free")]
+    public static bool Free(UnmanagedSimaiParseResult* ptr)
+    {
+        try
+        {
+            if(ptr is null)
+            {
+                return false;
+            }
+            ptr->Free();
+            return true;
+        }
+        catch
+        {
+            return false;
+        }
+    }
+    [UnmanagedCallersOnly(EntryPoint = "MajSimai_FreeHGlobal")]
     public static bool Free(nint ptr)
     {
         try
         {
+            if(ptr == 0)
+            {
+                return false;
+            }
             Marshal.FreeHGlobal(ptr);
             return true;
         }

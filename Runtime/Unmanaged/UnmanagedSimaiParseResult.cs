@@ -20,13 +20,30 @@ public unsafe ref struct UnmanagedSimaiParseResult
     public int errorAtLine = -1;
     public int errorAtColumn = -1;
     public int errorMsgLen = 0;
+    public int errorContentLen = 0;
 
     public void* simaiFile = null;
     public char* errorMsgAnsi = null;
+    public char* errorContentAnsi = null;
 
     public UnmanagedSimaiParseResult()
     {
 
+    }
+    public void Free()
+    {
+        Marshal.FreeHGlobal((nint)errorMsgAnsi);
+        Marshal.FreeHGlobal((nint)errorContentAnsi);
+        if(simaiFile is not null)
+        {
+            ((UnmanagedSimaiFile*)simaiFile)->Free();
+            simaiFile = null;
+        }
+        code = -1;
+        errorAtLine = -1;
+        errorAtColumn = -1;
+        errorMsgLen = 0;
+        errorContentLen = 0;
     }
 }
 #endif

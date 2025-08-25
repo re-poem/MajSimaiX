@@ -15,5 +15,15 @@ internal unsafe struct UnmanagedSimaiCommand
 
     public char* prefix;
     public char* value;
+
+    public void Free()
+    {
+        Marshal.FreeHGlobal((nint)prefix);
+        Marshal.FreeHGlobal((nint)value);
+        prefix = null;
+        value = null;
+        prefixLen = 0;
+        valueLen = 0;
+    }
 }
 #endif

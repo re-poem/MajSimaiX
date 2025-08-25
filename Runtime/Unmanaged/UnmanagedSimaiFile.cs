@@ -20,5 +20,36 @@ internal unsafe struct UnmanagedSimaiFile
     public char* artist;
     public UnmanagedSimaiChart* charts;
     public UnmanagedSimaiCommand* commands;
+
+    public void Free()
+    {
+        Marshal.FreeHGlobal((nint)title);
+        Marshal.FreeHGlobal((nint)artist);
+        if(charts is not null)
+        {
+            for (var i = 0; i < chartsLen; i++)
+            {
+                (charts + i)->Free();
+            }
+            Marshal.FreeHGlobal((nint)charts);
+            charts = null;
+        }
+        if (commands is not null)
+        {
+            for (var i = 0; i < commandsLen; i++)
+            {
+                (commands + i)->Free();
+            }
+            Marshal.FreeHGlobal((nint)commands);
+            commands = null;
+        }
+
+        title = null; 
+        artist = null;
+        titleLen = 0;
+        artistLen = 0;
+        chartsLen = 0;
+        commandsLen = 0;
+    }
 }
 #endif

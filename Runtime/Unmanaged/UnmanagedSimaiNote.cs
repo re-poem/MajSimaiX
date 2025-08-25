@@ -30,5 +30,12 @@ internal unsafe struct UnmanagedSimaiNote
     public int rawContentLen;
 
     public char* rawContent;
+
+    public void Free()
+    {
+        Marshal.FreeHGlobal((nint)rawContent);
+        rawContent = null;
+        rawContentLen = 0;
+    }
 }
 #endif

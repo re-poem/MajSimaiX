@@ -38,5 +38,40 @@ internal unsafe struct UnmanagedSimaiChart
         commaTimings = null,
         commaTimingsLen = 0,
     };
+    public void Free()
+    {
+        Marshal.FreeHGlobal((nint)level);
+        Marshal.FreeHGlobal((nint)designer);
+        Marshal.FreeHGlobal((nint)fumen);
+
+        if(noteTimings is not null)
+        {
+            for (var i = 0; i < noteTimingsLen; i++)
+            {
+                (noteTimings + i)->Free();
+            }
+            Marshal.FreeHGlobal((nint)noteTimings);
+        }
+        if(commaTimings is not null)
+        {
+            for(var i = 0;i < commaTimingsLen; i++)
+            {
+                (commaTimings + i)->Free();
+            }
+            Marshal.FreeHGlobal((nint)commaTimings);
+        }
+
+        level = null;
+        levelLen = 0;
+        designer = null;
+        designerLen = 0;
+        fumen = null;
+        fumenLen = 0;
+        isEmpty = true;
+        noteTimings = null;
+        noteTimingsLen = 0;
+        commaTimings = null;
+        commaTimingsLen = 0;
+    }
 }
 #endif
