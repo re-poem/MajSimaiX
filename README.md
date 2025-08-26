@@ -171,5 +171,6 @@ int main()
 (197){8}1,2,3,4,5,6,7,8,)";
     MajSimaiParseResult result = MajSimaiParseResult();
     MajSimai_Parse(FUMEN.data(), FUMEN.length(), &result);
-    MajSimai_Free(&result)
+    MajSimai_Free(&result);
+}
 ```
