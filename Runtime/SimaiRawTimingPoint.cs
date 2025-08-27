@@ -6,33 +6,64 @@ using System.Threading.Tasks;
 #nullable enable
 namespace MajSimai
 {
-    internal class SimaiRawTimingPoint
+    internal readonly struct SimaiRawTimingPoint
     {
-        public double Timing { get; } = 0;
-        public float Bpm { get; } = -1;
-        public float HSpeed { get; } = 1f;
-        public string RawContent { get; } = string.Empty;
+        public double Timing { get; }
+        public float Bpm { get; }
+        public float HSpeed { get; } 
+        public string RawContent { get; }
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
 
-        public SimaiRawTimingPoint(double timing, int textPosX = 0, int textPosY = 0, string rawContent = "", float bpm = 0f,
+        public SimaiRawTimingPoint(double timing, ReadOnlySpan<char> rawContent, int textPosX = 0, int textPosY = 0, float bpm = 0f,
             float hspeed = 1f)
         {
             Timing = timing;
             RawTextPositionX = textPosX;
             RawTextPositionY = textPosY;
-            RawContent = rawContent.Replace("\n", "").Replace(" ", "");
+            if (!rawContent.IsEmpty)
+            {
+                Span<char> rCSpan = stackalloc char[rawContent.Length];
+                rawContent.Replace(rCSpan, '\n', ' ');
+                var i2 = 0;
+                for (var i = 0; i < rCSpan.Length; i++)
+                {
+                    var current = rCSpan[i];
+                    if (char.IsWhiteSpace(current))
+                    {
+                        continue;
+                    }
+                    else
+                    {
+                        rCSpan[i2++] = current;
+                    }
+                }
+                var newRaw = rCSpan.Slice(0, i2);
+                if (newRaw != rawContent)
+                {
+                    RawContent = new string(rCSpan.Slice(0, i2));
+                }
+                else
+                {
+                    RawContent = rawContent.ToString();
+                }
+            }
+            else
+            {
+                RawContent = string.Empty;
+            }
             Bpm = bpm;
             HSpeed = hspeed;
         }
-        public async Task<SimaiTimingPoint> ParseAsync()
+        public SimaiTimingPoint Parse()
         {
-            return await Task.Run(() =>
-            {
-                var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
+            var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
 
-                return new SimaiTimingPoint(Timing, notes, RawTextPositionX, RawTextPositionY, RawContent, Bpm, HSpeed);
-            });
+            return new SimaiTimingPoint(Timing, notes, RawContent, RawTextPositionX, RawTextPositionY, Bpm, HSpeed);
+        }
+        public Task<SimaiTimingPoint> ParseAsync()
+        {
+            return Task.Run(Parse);
         }
     }
 }

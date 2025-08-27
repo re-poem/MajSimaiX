@@ -1,4 +1,6 @@
-﻿namespace MajSimai
+﻿using System.Runtime.InteropServices;
+
+namespace MajSimai
 {
     public class SimaiNote
     {
@@ -21,5 +23,39 @@
         public double SlideStartTime { get; set; }
         public double SlideTime { get; set; }
         public char TouchArea { get; set; } = ' ';
+
+#if NET7_0_OR_GREATER
+        internal unsafe MajSimai.Unmanaged.UnmanagedSimaiNote ToUnmanaged()
+        {
+            var rawContentPtr = (char*)null;
+            if(!string.IsNullOrEmpty(RawContent))
+            {
+                rawContentPtr = (char*)Marshal.StringToHGlobalAnsi(RawContent);
+            }
+
+            return new()
+            {
+                type = Type,
+                startPosition = StartPosition,
+                holdTime = HoldTime,
+                slideTime = SlideTime,
+                slideStartTime = SlideStartTime,
+
+                isBreak = IsBreak,
+                isFakeRotate = IsFakeRotate,
+                isForceStar = IsForceStar,
+                isHanabi = IsHanabi,
+                isSlideBreak = IsSlideBreak,
+                isEx = IsEx,
+                isMine = IsMine,
+                isMineSlide = IsMineSlide,
+                isSlideNoHead = IsSlideNoHead,
+                touchArea = TouchArea,
+
+                rawContent = rawContentPtr,
+                rawContentLen = RawContent.Length
+            };
+        }
+#endif
     }
 }
