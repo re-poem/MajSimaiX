@@ -82,7 +82,7 @@ namespace MajSimai
         /// <returns></returns>
         public static SimaiFile Parse(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true))
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
                 try
@@ -213,7 +213,7 @@ namespace MajSimai
         public static async Task<SimaiFile> ParseAsync(Stream contentStream, Encoding encoding)
         {
 
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true)) 
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true)) 
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(1024);
                 var buffer = ArrayPool<char>.Shared.Rent(4096);
@@ -510,7 +510,7 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true))
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
                 try
@@ -577,7 +577,7 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static async Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true))
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
                 var buffer = ArrayPool<char>.Shared.Rent(4096);
