@@ -23,12 +23,19 @@ namespace MajSimai
         /// <returns></returns>
         public static SimaiFile Parse(ReadOnlySpan<char> content)
         {
+            var metadata = ParseMetadata(content);
+            return Parse(metadata);
+        }
+        /// <summary>
+        /// Parse simai <paramref name="metadata"/> into <seealso cref="SimaiFile"/>.
+        /// </summary>
+        /// <param name="metadata">Simai metadata</param>
+        /// <returns></returns>
+        public static SimaiFile Parse(SimaiMetadata metadata)
+        {
             var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
             try
             {
-
-                var metadata = ParseMetadata(content);
-
                 Parallel.For(0, 7, i =>
                 {
                     var fumen = metadata.Fumens[i];
@@ -75,7 +82,7 @@ namespace MajSimai
         /// <returns></returns>
         public static SimaiFile Parse(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true))
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
                 try
@@ -126,13 +133,21 @@ namespace MajSimai
         /// <returns></returns>
         public static async Task<SimaiFile> ParseAsync(ReadOnlyMemory<char> content)
         {
+            var metadata = await ParseMetadataAsync(content);
+            return await ParseAsync(metadata);
+        }
+        /// <summary>
+        /// Parse simai <paramref name="metadata"/> into <seealso cref="SimaiFile"/>.
+        /// </summary>
+        /// <param name="metadata">Simai metadata</param>
+        /// <returns></returns>
+        public static async Task<SimaiFile> ParseAsync(SimaiMetadata metadata)
+        {
             var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
             var rentedArrayForTasks = ArrayPool<Task<SimaiChart>>.Shared.Rent(7);
             Array.Fill(rentedArrayForTasks, SimaiChartCompletedTask);
             try
             {
-                var metadata = await ParseMetadataAsync(content);
-
                 for (var i = 0; i < 7; i++)
                 {
                     var fumen = metadata.Fumens[i];
@@ -198,7 +213,7 @@ namespace MajSimai
         public static async Task<SimaiFile> ParseAsync(Stream contentStream, Encoding encoding)
         {
 
-            using (var decodeStream = new StreamReader(contentStream, encoding))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true)) 
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(1024);
                 var buffer = ArrayPool<char>.Shared.Rent(4096);
@@ -495,7 +510,7 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true))
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
                 try
@@ -562,7 +577,7 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static async Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding))
+            using (var decodeStream = new StreamReader(contentStream, encoding, true, -1, leaveOpen: true))
             {
                 var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
                 var buffer = ArrayPool<char>.Shared.Rent(4096);
