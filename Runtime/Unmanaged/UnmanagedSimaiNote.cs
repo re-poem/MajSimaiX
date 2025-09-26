@@ -17,6 +17,9 @@ internal unsafe struct UnmanagedSimaiNote
     public double slideStartTime;
     public double slideTime;
     public char touchArea;
+    public string kSkin;
+    public string kWav;
+    public int usingSV;
 
     public bool isBreak;
     public bool isEx;
@@ -27,6 +30,10 @@ internal unsafe struct UnmanagedSimaiNote
     public bool isSlideNoHead;
     public bool isMine;
     public bool isMineSlide;
+    public bool isKustom;
+    public bool isKustomSlide;
+    public bool isUsingSubSV;
+    public bool isSlient;
     public int rawContentLen;
 
     public char* rawContent;
