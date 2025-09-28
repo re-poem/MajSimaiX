@@ -262,6 +262,26 @@ namespace MajSimai
                 //Console.WriteLine("Slide:" + simaiNote.startPosition + " TimeLastFor:" + simaiNote.slideTime);
             }
 
+            //Kustom
+            if (detectResult.IsKustom)
+            {
+                NoteHelper.GetKustomSkin(noteText, out var kSkin);
+                NoteHelper.GetKustomWav(noteText, out var kWav);
+
+                simaiNote.KustomSkin = kSkin.ToString();
+                simaiNote.KustomWav = kWav.ToString();
+            }
+
+            //UsingSV
+            if (detectResult.IsUsingSubSV)
+            {
+                //simaiNote.IsUsingSubSV = detectResult.IsUsingSubSV;
+                if (int.TryParse(noteTextCopy[(noteTextCopy.LastIndexOf('c') + 1)..(noteTextCopy.LastIndexOf('c') + 2)], out int number))
+                    simaiNote.UsingSV = number;
+                else 
+                    simaiNote.UsingSV = 0;
+            }
+
             //break
             simaiNote.IsBreak = detectResult.IsBreak;
             simaiNote.IsSlideBreak = detectResult.IsBreakSlide;
@@ -276,6 +296,13 @@ namespace MajSimai
             // mine
             simaiNote.IsMine = detectResult.IsMine;
             simaiNote.IsMineSlide = detectResult.IsMineSlide;
+
+            //Kustom
+            simaiNote.IsKustom = detectResult.IsKustom;
+            simaiNote.IsKustomSlide = detectResult.IsKustomSlide;
+
+            //Slient
+            simaiNote.IsSlient = detectResult.IsSlient;
 
             simaiNote.RawContent = new string(noteTextCopy.Trim());
             outSimaiNote = simaiNote;
@@ -545,6 +572,76 @@ namespace MajSimai
                 return true;
             }
 
+            public static void GetKustomSkin(zString text, out zString kSkin)
+            {
+                kSkin = string.Empty;
+                for (int i = 0; i < text.Length; i++)
+                {
+                    if (text[i] == '\"')
+                    {
+                        int start = i + 1;
+                        i = start;
+                        while (i < text.Length && text[i] != '\"') i++;
+
+                        if (i < text.Length)
+                        {
+                            kSkin = text[start..i];
+                            return;
+                        }
+                    }
+                }
+            }
+
+            public static void GetKustomWav(zString text, out zString kWav)
+            {
+                kWav = string.Empty;
+                for (int i = 0; i < text.Length; i++)
+                {
+                    if (text[i] == '\'')
+                    {
+                        int start = i + 1;
+                        i = start;
+                        while (i < text.Length && text[i] != '\'') i++;
+
+                        if (i < text.Length)
+                        {
+                            kWav = text[start..i];
+                            return;
+                        }
+                    }
+                }
+            }
+            public static zString RemoveKustomText(zString text)
+            {
+                var sb = new StringBuilder(text.Length);
+                int length = text.Length;
+                bool inside = false;
+                char quote = '\0';
+
+                for (int i = 0; i < length; i++)
+                {
+                    char c = text[i];
+
+                    if (!inside && (c == '"' || c == '\''))
+                    {
+                        inside = true;
+                        quote = c;       // 记录是单引号还是双引号
+                        continue;        // 不写入引号
+                    }
+
+                    if (inside && c == quote)
+                    {
+                        inside = false;  // 结束引号区
+                        continue;        // 不写入引号
+                    }
+
+                    if (!inside)
+                        sb.Append(c);
+                }
+
+                return sb.ToString().AsSpan();
+            }
+
             public readonly ref struct NoteFlag
             {
                 public readonly bool IsTouchNote;           // ABCDE
@@ -560,6 +657,10 @@ namespace MajSimai
                 public readonly bool IsFakeRotate;          // $$
                 public readonly bool IsMine;                // m
                 public readonly bool IsMineSlide;           // m
+                public readonly bool IsKustom;              // k
+                public readonly bool IsKustomSlide;         // k
+                public readonly bool IsUsingSubSV;          // c
+                public readonly bool IsSlient;              // t
 
                 public readonly Span<char> NoteContent;
 
@@ -576,6 +677,10 @@ namespace MajSimai
                                 bool isFakeRotate,
                                 bool isMine,
                                 bool isMineSlide,
+                                bool isKustom,
+                                bool isKustomSlide,
+                                bool isUsingSubSV,
+                                bool isSlient,
                                 Span<char> noteContent)
                 {
                     IsTouchNote = isTouchNote;
@@ -591,6 +696,10 @@ namespace MajSimai
                     IsFakeRotate = isFakeRotate;
                     IsMine = isMine;
                     IsMineSlide = isMineSlide;
+                    IsKustom = isKustom;
+                    IsKustomSlide = isKustomSlide;
+                    IsUsingSubSV = isUsingSubSV;
+                    IsSlient = isSlient;
                     NoteContent = noteContent;
                 }
 
@@ -600,6 +709,9 @@ namespace MajSimai
                     {
                         return default;
                     }
+
+                    noteContent = RemoveKustomText(noteContent);
+
                     // Flags
                     var isTouchNote = false;
                     var isBreak = false;
@@ -614,13 +726,17 @@ namespace MajSimai
                     var isFakeRotate = false;
                     var isMine = false;
                     var isMineSlide = false;
+                    var isKustom = false;
+                    var isKustomSlide = false;
+                    var isUsingSubSV = false;
+                    var isSlient = false;
 
                     var forceStarTagCount = 0;
                     var j = 0;
                     for (var i = 0; i < noteContent.Length; i++)
                     {
                         ref readonly var curChar = ref noteContent[i];
-                        switch (curChar)
+                        switch (curChar) //后面需要根据以下标志进行定位的使用break，不然返回时标志会消失
                         {
                             case '-':
                             case '^':
@@ -656,6 +772,12 @@ namespace MajSimai
                                 continue;
                             case '?':
                                 isSlideNoHeadAndDelay = true;
+                                continue;
+                            case 'c':
+                                isUsingSubSV = true;
+                                break;
+                            case 't':
+                                isSlient = true;
                                 continue;
                             case '$':
                                 forceStarTagCount++;
@@ -706,6 +828,29 @@ namespace MajSimai
                                     }
                                 }
                                 continue;
+                            case 'k':
+                                {
+                                    if (isKustom && isKustomSlide)
+                                    {
+                                        continue;
+                                    }
+                                    if (isSlide)
+                                    {
+                                        if (i != noteContent.Length - 1) // 1-3k[8:1]
+                                        {
+                                            isKustomSlide |= noteContent[i + 1] == '[';
+                                        }
+                                        else // 1-3[8:1]k
+                                        {
+                                            isKustomSlide = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        isKustom = true;
+                                    }
+                                }
+                                continue;
                         }
                         dst[j++] = curChar;
                     }
@@ -726,7 +871,11 @@ namespace MajSimai
                                         isFakeRotate,
                                         isMine,
                                         isMineSlide,
-                                        dst.Slice(0, j));
+                                        isKustom,
+                                        isKustomSlide,
+                                        isUsingSubSV,
+                                        isSlient,
+                                        dst[..j]);
                 }
             }
         }
