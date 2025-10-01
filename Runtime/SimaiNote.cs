@@ -18,8 +18,10 @@ namespace MajSimai
         public bool IsMine { get; set; } //炸弹音符
         public bool IsMineSlide { get; set; }
         public bool IsKustom { get; set; }
-        public bool IsKustomSlide { get; set; }
+        public bool IsSlideKustom { get; set; }
         public bool IsSlient { get; set; }
+        public bool IsUnplayable { get; set; }
+        public bool IsSlideUnplayable { get; set; }
 
 
         public string RawContent { get; set; } = string.Empty; //used for star explain
@@ -62,8 +64,10 @@ namespace MajSimai
                 isSlideNoHead = IsSlideNoHead,
                 touchArea = TouchArea,
                 isKustom = IsKustom,
-                isKustomSlide = IsKustomSlide,
+                isSlideKustom = IsSlideKustom,
                 isSlient = IsSlient,
+                isUnplayable = IsUnplayable,
+                isSlideUnplayable = IsSlideUnplayable,
 
                 rawContent = rawContentPtr,
                 rawContentLen = RawContent.Length

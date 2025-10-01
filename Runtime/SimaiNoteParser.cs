@@ -273,14 +273,7 @@ namespace MajSimai
             }
 
             //UsingSV
-            if (detectResult.IsUsingSubSV)
-            {
-                //simaiNote.IsUsingSubSV = detectResult.IsUsingSubSV;
-                if (int.TryParse(noteTextCopy[(noteTextCopy.LastIndexOf('c') + 1)..(noteTextCopy.LastIndexOf('c') + 2)], out int number))
-                    simaiNote.UsingSV = number;
-                else 
-                    simaiNote.UsingSV = 0;
-            }
+            simaiNote.UsingSV = detectResult.UsingSV;
 
             //break
             simaiNote.IsBreak = detectResult.IsBreak;
@@ -293,13 +286,17 @@ namespace MajSimai
             simaiNote.IsForceStar = detectResult.IsForceStar;
             simaiNote.IsFakeRotate = detectResult.IsFakeRotate;
 
-            // mine
+            //mine
             simaiNote.IsMine = detectResult.IsMine;
             simaiNote.IsMineSlide = detectResult.IsMineSlide;
 
             //Kustom
             simaiNote.IsKustom = detectResult.IsKustom;
-            simaiNote.IsKustomSlide = detectResult.IsKustomSlide;
+            simaiNote.IsSlideKustom = detectResult.IsSlideKustom;
+
+            //Unplayable
+            simaiNote.IsUnplayable = detectResult.IsUnplayable;
+            simaiNote.IsSlideUnplayable = detectResult.IsSlideUnplayable;
 
             //Slient
             simaiNote.IsSlient = detectResult.IsSlient;
@@ -658,9 +655,11 @@ namespace MajSimai
                 public readonly bool IsMine;                // m
                 public readonly bool IsMineSlide;           // m
                 public readonly bool IsKustom;              // k
-                public readonly bool IsKustomSlide;         // k
-                public readonly bool IsUsingSubSV;          // c
+                public readonly bool IsSlideKustom;         // k
+                public readonly int UsingSV;                // c[number]
                 public readonly bool IsSlient;              // t
+                public readonly bool IsUnplayable;          // u
+                public readonly bool IsSlideUnplayable;     // u
 
                 public readonly Span<char> NoteContent;
 
@@ -678,9 +677,11 @@ namespace MajSimai
                                 bool isMine,
                                 bool isMineSlide,
                                 bool isKustom,
-                                bool isKustomSlide,
-                                bool isUsingSubSV,
+                                bool isSlideKustom,
+                                int usingSV,
                                 bool isSlient,
+                                bool isUnplayable,
+                                bool isSlideUnplayable,
                                 Span<char> noteContent)
                 {
                     IsTouchNote = isTouchNote;
@@ -697,9 +698,11 @@ namespace MajSimai
                     IsMine = isMine;
                     IsMineSlide = isMineSlide;
                     IsKustom = isKustom;
-                    IsKustomSlide = isKustomSlide;
-                    IsUsingSubSV = isUsingSubSV;
+                    IsSlideKustom = isSlideKustom;
+                    UsingSV = usingSV;
                     IsSlient = isSlient;
+                    IsUnplayable = isUnplayable;
+                    IsSlideUnplayable = isSlideUnplayable;
                     NoteContent = noteContent;
                 }
 
@@ -727,9 +730,11 @@ namespace MajSimai
                     var isMine = false;
                     var isMineSlide = false;
                     var isKustom = false;
-                    var isKustomSlide = false;
-                    var isUsingSubSV = false;
+                    var isSlideKustom = false;
+                    var usingSV = 1;
                     var isSlient = false;
+                    var isUnplayable = false;
+                    var isSlideUnplayable = false;
 
                     var forceStarTagCount = 0;
                     var j = 0;
@@ -774,8 +779,14 @@ namespace MajSimai
                                 isSlideNoHeadAndDelay = true;
                                 continue;
                             case 'c':
-                                isUsingSubSV = true;
-                                break;
+                                {
+                                    if (int.TryParse(noteContent[(i+1)..(i+2)], out var number))
+                                    {
+                                        usingSV = number;
+                                        i++;
+                                    }
+                                    continue;
+                                }
                             case 't':
                                 isSlient = true;
                                 continue;
@@ -830,7 +841,7 @@ namespace MajSimai
                                 continue;
                             case 'k':
                                 {
-                                    if (isKustom && isKustomSlide)
+                                    if (isKustom && isSlideKustom)
                                     {
                                         continue;
                                     }
@@ -838,16 +849,39 @@ namespace MajSimai
                                     {
                                         if (i != noteContent.Length - 1) // 1-3k[8:1]
                                         {
-                                            isKustomSlide |= noteContent[i + 1] == '[';
+                                            isSlideKustom |= noteContent[i + 1] == '[';
                                         }
                                         else // 1-3[8:1]k
                                         {
-                                            isKustomSlide = true;
+                                            isSlideKustom = true;
                                         }
                                     }
                                     else
                                     {
                                         isKustom = true;
+                                    }
+                                }
+                                continue;
+                            case 'u':
+                                {
+                                    if (isUnplayable && isSlideUnplayable)
+                                    {
+                                        continue;
+                                    }
+                                    if (isSlide)
+                                    {
+                                        if (i != noteContent.Length - 1) // 1-3u[8:1]
+                                        {
+                                            isSlideUnplayable |= noteContent[i + 1] == '[';
+                                        }
+                                        else // 1-3[8:1]u
+                                        {
+                                            isSlideUnplayable = true;
+                                        }
+                                    }
+                                    else
+                                    {
+                                        isUnplayable = true;
                                     }
                                 }
                                 continue;
@@ -872,9 +906,11 @@ namespace MajSimai
                                         isMine,
                                         isMineSlide,
                                         isKustom,
-                                        isKustomSlide,
-                                        isUsingSubSV,
+                                        isSlideKustom,
+                                        usingSV,
                                         isSlient,
+                                        isUnplayable,
+                                        isSlideUnplayable,
                                         dst[..j]);
                 }
             }

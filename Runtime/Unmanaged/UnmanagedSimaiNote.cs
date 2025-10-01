@@ -31,9 +31,11 @@ internal unsafe struct UnmanagedSimaiNote
     public bool isMine;
     public bool isMineSlide;
     public bool isKustom;
-    public bool isKustomSlide;
+    public bool isSlideKustom;
     public bool isUsingSubSV;
     public bool isSlient;
+    public bool isUnplayable;
+    public bool isSlideUnplayable;
     public int rawContentLen;
 
     public char* rawContent;
