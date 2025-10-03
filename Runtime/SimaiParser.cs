@@ -650,6 +650,7 @@ namespace MajSimai
             double time = 0; //in seconds
             var beats = 4f; //{4}
             var haveNote = false;
+            var haveSV = false;
             //var noteTemp = "";
 
             int Ycount = 1, Xcount = 0;
@@ -857,10 +858,11 @@ namespace MajSimai
                                             }
                                             else if (Content[0..tagIndex].SequenceEqual("SV"))
                                             {
-                                                if (!float.TryParse(Value, out curSVeloc))
+                                                if (float.TryParse(Value, out curSVeloc))
                                                 {
-                                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, Content.ToString(), "SVeloc value must be a number");
+                                                    haveSV = true;
                                                 }
+                                                else throw new InvalidSimaiMarkupException(Ycount, Xcount, Content.ToString(), "SVeloc value must be a number");
                                             }
                                             else throw new InvalidSimaiSyntaxException(Ycount, Xcount, Content.ToString(), $"Unexpected HS / SV declaration syntax \"{Content[0..tagIndex].ToString()}\", is it \"HS\" or \"SV\"?");
                                         }
@@ -889,7 +891,7 @@ namespace MajSimai
 
                     if (fumen[i] == ',')
                     {
-                        if (haveNote)
+                        if (haveNote || haveSV)
                         {
                             var noteContent = (ReadOnlySpan<char>)(noteContentBuffer.AsSpan(0, noteContentBufIndex));
                             var fakeEachTagCount = noteContent.Count('`');
@@ -944,7 +946,15 @@ namespace MajSimai
                             noteContentBufIndex = 0;
                         }
                         BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
-                        commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, curSVeloc, i);
+                        commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, 
+                                                                                        null, 
+                                                                                        string.Empty, 
+                                                                                        Xcount, 
+                                                                                        Ycount, 
+                                                                                        bpm, 
+                                                                                        1, 
+                                                                                        curSVeloc, 
+                                                                                        i);
 
                         time += 1d / (bpm / 60d) * 4d / beats;
                         //Console.WriteLine(time);
