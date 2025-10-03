@@ -589,6 +589,7 @@ namespace MajSimai
             double time = 0; //in seconds
             var beats = 4f; //{4}
             var haveNote = false;
+            var haveSV = false;
             //var noteTemp = "";
 
             int Ycount = 1, Xcount = 0;
@@ -796,10 +797,9 @@ namespace MajSimai
                                             }
                                             else if (Content[0..tagIndex].SequenceEqual("SV"))
                                             {
-                                                if (!float.TryParse(Value, out curSVeloc))
-                                                {
-                                                    throw new InvalidSimaiMarkupException(Ycount, Xcount, Content.ToString(), "SVeloc value must be a number");
-                                                }
+                                                if (float.TryParse(Value, out curSVeloc))
+                                                    haveSV = true;
+                                                else throw new InvalidSimaiMarkupException(Ycount, Xcount, Content.ToString(), "SVeloc value must be a number");
                                             }
                                             else throw new InvalidSimaiSyntaxException(Ycount, Xcount, Content.ToString(), $"Unexpected HS / SV declaration syntax \"{Content[0..tagIndex].ToString()}\", is it \"HS\" or \"SV\"?");
                                         }
@@ -829,7 +829,7 @@ namespace MajSimai
 
                     if (fumen[i] == ',')
                     {
-                        if (haveNote)
+                        if (haveNote || haveSV)
                         {
                             var noteContent = (ReadOnlySpan<char>)(noteContentBuffer.AsSpan(0, noteContentBufIndex));
                             var fakeEachTagCount = noteContent.Count('`');
