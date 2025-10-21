@@ -295,11 +295,16 @@ namespace MajSimai
                 var nextStartIndex = 0;
                 var startIndex = 0;
                 Span<Range> ranges = stackalloc Range[4];
-                while ((startIndex = noteText[nextStartIndex..].IndexOf('[')) != -1)
+                startIndex = noteText[nextStartIndex..].IndexOf('[');
+                if(startIndex == -1)
+                {
+                    return false;
+                }
+                do
                 {
                     var slideBody = noteText[(nextStartIndex + startIndex)..];
                     var overIndex = slideBody.IndexOf(']');
-                    if(overIndex == -1)
+                    if (overIndex == -1)
                     {
                         return false;
                     }
@@ -308,7 +313,7 @@ namespace MajSimai
                     var slideParamsBody = slideBody.Slice(1, overIndex - 1);
                     var tagCount = slideParamsBody.Split(ranges, '#', StringSplitOptions.None);
 
-                    switch(tagCount)
+                    switch (tagCount)
                     {
                         case 1: // [8:1]
                             {
@@ -328,11 +333,11 @@ namespace MajSimai
                                 {
                                     return false;
                                 }
-                                if(double.TryParse(param2, out var time)) // [160#2s]
+                                if (double.TryParse(param2, out var time)) // [160#2s]
                                 {
                                     slideTime += time;
                                 }
-                                else if(TryGetTimeFromRatio(cBpm, param2, out time)) // [160#8:3]
+                                else if (TryGetTimeFromRatio(cBpm, param2, out time)) // [160#8:3]
                                 {
                                     slideTime += time;
                                 }
@@ -392,7 +397,7 @@ namespace MajSimai
                         default://undefined behavior
                             return false;
                     }
-                }
+                } while ((startIndex = noteText[nextStartIndex..].IndexOf('[')) != -1);
 
                 slideWaitTime = 1d / ((customBpm ?? bpm) / 60d);
 
