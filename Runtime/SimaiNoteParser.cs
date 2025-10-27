@@ -263,13 +263,13 @@ namespace MajSimai
             }
 
             //Kustom
-            if (detectResult.IsKustom)
+            if (detectResult.IsKustom || detectResult.IsSlideKustom)
             {
                 NoteHelper.GetKustomSkin(noteText, out var kSkin);
                 NoteHelper.GetKustomWav(noteText, out var kWav);
 
-                simaiNote.KustomSkin = kSkin.ToString();
-                simaiNote.KustomWav = kWav.ToString();
+                simaiNote.KustomSkin = kSkin;
+                simaiNote.KustomWav = kWav;
             }
 
             //UsingSV
@@ -569,9 +569,9 @@ namespace MajSimai
                 return true;
             }
 
-            public static void GetKustomSkin(zString text, out zString kSkin)
+            public static void GetKustomSkin(zString text, out string? kSkin)
             {
-                kSkin = string.Empty;
+                kSkin = null;
                 for (int i = 0; i < text.Length; i++)
                 {
                     if (text[i] == '\"')
@@ -582,16 +582,16 @@ namespace MajSimai
 
                         if (i < text.Length)
                         {
-                            kSkin = text[start..i];
+                            kSkin = text[start..i].ToString();
                             return;
                         }
                     }
                 }
             }
 
-            public static void GetKustomWav(zString text, out zString kWav)
+            public static void GetKustomWav(zString text, out string? kWav)
             {
-                kWav = string.Empty;
+                kWav = null;
                 for (int i = 0; i < text.Length; i++)
                 {
                     if (text[i] == '\'')
@@ -602,7 +602,7 @@ namespace MajSimai
 
                         if (i < text.Length)
                         {
-                            kWav = text[start..i];
+                            kWav = text[start..i].ToString();
                             return;
                         }
                     }

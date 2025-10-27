@@ -17,8 +17,8 @@ internal unsafe struct UnmanagedSimaiNote
     public double slideStartTime;
     public double slideTime;
     public char touchArea;
-    public string kSkin;
-    public string kWav;
+    public string? kSkin;
+    public string? kWav;
     public int usingSV;
 
     public bool isBreak;

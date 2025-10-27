@@ -29,8 +29,8 @@ namespace MajSimai
         public double SlideStartTime { get; set; }
         public double SlideTime { get; set; }
         public char TouchArea { get; set; } = ' ';
-        public string KustomSkin { get; set; } = string.Empty;
-        public string KustomWav { get; set; } = string.Empty;
+        public string? KustomSkin { get; set; }
+        public string? KustomWav { get; set; }
         public int UsingSV { get; set; } = 1;
 
 #if NET7_0_OR_GREATER
