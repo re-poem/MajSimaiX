@@ -23,7 +23,7 @@ public unsafe class UnmanagedSimaiParser
         }
         try
         {
-            var simaiFile = SimaiParser.Parse(content);
+            var simaiFile = SimaiParser.Parse(content, string.Empty);
             var unmanagedSimaiFile = simaiFile.ToUnmanaged();
             var unmanagedSimaiFilePtr = (UnmanagedSimaiFile*)Marshal.AllocHGlobal(sizeof(UnmanagedSimaiFile));
             *unmanagedSimaiFilePtr = unmanagedSimaiFile;
