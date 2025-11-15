@@ -21,9 +21,9 @@ namespace MajSimai
         /// </summary>
         /// <param name="content">Simai text</param>
         /// <returns></returns>
-        public static SimaiFile Parse(ReadOnlySpan<char> content)
+        public static SimaiFile Parse(in ReadOnlySpan<char> content, string hash)
         {
-            var metadata = ParseMetadata(content);
+            var metadata = ParseMetadata(content, hash);
             return Parse(metadata);
         }
         /// <summary>
@@ -51,7 +51,7 @@ namespace MajSimai
                         Console.WriteLine(ex);
                     }
                 });
-                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, rentedArrayForCharts, null);
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
                 var cmds = simaiFile.Commands;
                 var cmdCount = metadata.Commands.Length;
                 for (var i = 0; i < cmdCount; i++)
@@ -82,30 +82,14 @@ namespace MajSimai
         /// <returns></returns>
         public static SimaiFile Parse(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true))
+            var (contentBuffer, hash) = DecodeAndHash(contentStream, encoding);
+            try
             {
-                var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
-                try
-                {
-                    var read = 0;
-                    Span<char> buffer = stackalloc char[4096];
-                    while (!decodeStream.EndOfStream)
-                    {
-                        var currentRead = decodeStream.Read(buffer);
-                        if (currentRead == 0)
-                        {
-                            continue;
-                        }
-                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
-                        buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
-                        read += currentRead;
-                    }
-                    return Parse(contentBuffer.AsSpan(0, read));
-                }
-                finally
-                {
-                    ArrayPool<char>.Shared.Return(contentBuffer);
-                }
+                return Parse(contentBuffer.AsSpan(), hash);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(contentBuffer.Array!);
             }
         }
         /// <summary>
@@ -113,13 +97,13 @@ namespace MajSimai
         /// </summary>
         /// <param name="content">Simai text</param>
         /// <returns></returns>
-        public static Task<SimaiFile> ParseAsync(string content)
+        public static Task<SimaiFile> ParseAsync(string content, string hash)
         {
             var buffer = ArrayPool<char>.Shared.Rent(content.Length);
             try
             {
                 content.AsSpan().CopyTo(buffer);
-                return ParseAsync(buffer.AsMemory(0, content.Length));
+                return ParseAsync(buffer.AsMemory(0, content.Length), hash);
             }
             finally
             {
@@ -131,9 +115,10 @@ namespace MajSimai
         /// </summary>
         /// <param name="content">Simai text</param>
         /// <returns></returns>
-        public static async Task<SimaiFile> ParseAsync(ReadOnlyMemory<char> content)
+        public static async Task<SimaiFile> ParseAsync(ReadOnlyMemory<char> content, string hash)
         {
-            var metadata = await ParseMetadataAsync(content);
+            var metadata = await ParseMetadataAsync(content, hash);
+
             return await ParseAsync(metadata);
         }
         /// <summary>
@@ -180,7 +165,7 @@ namespace MajSimai
                     }
                 }
 
-                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, rentedArrayForCharts, null);
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
                 var cmds = simaiFile.Commands;
                 var cmdCount = metadata.Commands.Length;
                 for (var i = 0; i < cmdCount; i++)
@@ -212,32 +197,14 @@ namespace MajSimai
         /// <returns></returns>
         public static async Task<SimaiFile> ParseAsync(Stream contentStream, Encoding encoding)
         {
-
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true)) 
+            var (contentBuffer, hash) = await DecodeAndHashAsync(contentStream, encoding);
+            try
             {
-                var contentBuffer = ArrayPool<char>.Shared.Rent(1024);
-                var buffer = ArrayPool<char>.Shared.Rent(4096);
-                var read = 0;
-                try
-                {
-                    while (!decodeStream.EndOfStream)
-                    {
-                        var currentRead = await decodeStream.ReadAsync(buffer);
-                        if (currentRead == 0)
-                        {
-                            continue;
-                        }
-                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
-                        Array.Copy(buffer, 0, contentBuffer, read, currentRead);
-                        read += currentRead;
-                    }
-                    return await ParseAsync(contentBuffer.AsMemory(0, read));
-                }
-                finally
-                {
-                    ArrayPool<char>.Shared.Return(buffer);
-                    ArrayPool<char>.Shared.Return(contentBuffer);
-                }
+                return await ParseAsync(contentBuffer.AsMemory(), hash);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(contentBuffer.Array!);
             }
         }
         #endregion
@@ -248,7 +215,7 @@ namespace MajSimai
         /// <param name="content">Simai text</param>
         /// <returns></returns>
         /// <exception cref="InvalidSimaiMarkupException"></exception>
-        public static SimaiMetadata ParseMetadata(ReadOnlySpan<char> content)
+        public static SimaiMetadata ParseMetadata(in ReadOnlySpan<char> content, string hash)
         {
             static void SetValue(ReadOnlySpan<char> value, ref string valueStr)
             {
@@ -473,7 +440,7 @@ namespace MajSimai
                                          levels,
                                          fumens,
                                          commands.AsSpan(0, cI),
-                                         MD5Helper.ComputeHashAsBase64String(bytes));
+                                         hash);
             }
             catch (InvalidSimaiMarkupException)
             {
@@ -510,30 +477,14 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true))
+            var (contentBuffer, hash) = DecodeAndHash(contentStream, encoding);
+            try
             {
-                var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
-                try
-                {
-                    var read = 0;
-                    Span<char> buffer = stackalloc char[4096];
-                    while (!decodeStream.EndOfStream)
-                    {
-                        var currentRead = decodeStream.Read(buffer);
-                        if (currentRead == 0)
-                        {
-                            continue;
-                        }
-                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
-                        buffer.Slice(0, currentRead).CopyTo(contentBuffer.AsSpan(read));
-                        read += currentRead;
-                    }
-                    return ParseMetadata(contentBuffer.AsSpan(0, read));
-                }
-                finally
-                {
-                    ArrayPool<char>.Shared.Return(contentBuffer);
-                }
+                return ParseMetadata(contentBuffer.AsSpan(), hash);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(contentBuffer.Array!);
             }
         }
         /// <summary>
@@ -543,9 +494,9 @@ namespace MajSimai
         /// <param name="content">Simai text</param>
         /// <returns></returns>
         /// <exception cref="InvalidSimaiMarkupException"></exception>
-        public static Task<SimaiMetadata> ParseMetadataAsync(string content)
+        public static Task<SimaiMetadata> ParseMetadataAsync(string content, string hash)
         {
-            return Task.Run(() => ParseMetadata(content));
+            return Task.Run(() => ParseMetadata(content, hash));
         }
         /// <summary>
         /// Read simai text from <paramref name="content"/> and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
@@ -553,9 +504,9 @@ namespace MajSimai
         /// <param name="content">Simai text</param>
         /// <returns></returns>
         /// <exception cref="InvalidSimaiMarkupException"></exception>
-        public static Task<SimaiMetadata> ParseMetadataAsync(ReadOnlyMemory<char> content)
+        public static Task<SimaiMetadata> ParseMetadataAsync(ReadOnlyMemory<char> content, string hash)
         {
-            return Task.Run(() => ParseMetadata(content.Span));
+            return Task.Run(() => ParseMetadata(content.Span, hash));
         }
         /// <summary>
         /// Read simai text from <paramref name="contentStream"/> using UTF-8 encoding and parse it into <seealso cref="SimaiMetadata"/>. SimaiNote will not be parsed.
@@ -577,31 +528,14 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static async Task<SimaiMetadata> ParseMetadataAsync(Stream contentStream, Encoding encoding)
         {
-            using (var decodeStream = new StreamReader(contentStream, encoding, true, 1024, leaveOpen: true))
+            var (contentBuffer, hash) = await DecodeAndHashAsync(contentStream, encoding);
+            try
             {
-                var contentBuffer = ArrayPool<char>.Shared.Rent(4096);
-                var buffer = ArrayPool<char>.Shared.Rent(4096);
-                try
-                {
-                    var read = 0;
-                    while (!decodeStream.EndOfStream)
-                    {
-                        var currentRead = await decodeStream.ReadAsync(buffer);
-                        if (currentRead == 0)
-                        {
-                            continue;
-                        }
-                        BufferHelper.EnsureBufferLength(read + currentRead, ref contentBuffer);
-                        Array.Copy(buffer, 0, contentBuffer, read, currentRead);
-                        read += currentRead;
-                    }
-                    return await ParseMetadataAsync(contentBuffer.AsMemory(0, read));
-                }
-                finally
-                {
-                    ArrayPool<char>.Shared.Return(contentBuffer);
-                    ArrayPool<char>.Shared.Return(buffer);
-                }
+                return await ParseMetadataAsync(contentBuffer.AsMemory(), hash);
+            }
+            finally
+            {
+                ArrayPool<char>.Shared.Return(contentBuffer.Array!);
             }
         }
         #endregion
@@ -1137,9 +1071,22 @@ namespace MajSimai
                     return md5.ComputeHash(data);
                 }
             }
+            public static byte[] ComputeHash(byte[] data, int offset, int count)
+            {
+                using (var md5 = MD5.Create())
+                {
+                    return md5.ComputeHash(data, offset, count);
+                }
+            }
             public static string ComputeHashAsBase64String(byte[] data)
             {
                 var hash = ComputeHash(data);
+
+                return Convert.ToBase64String(hash);
+            }
+            public static string ComputeHashAsBase64String(byte[] data, int offset, int count)
+            {
+                var hash = ComputeHash(data, offset, count);
 
                 return Convert.ToBase64String(hash);
             }
@@ -1150,11 +1097,103 @@ namespace MajSimai
                     return await Task.Run(() => md5.ComputeHash(data));
                 }
             }
+            public static async Task<byte[]> ComputeHashAsync(byte[] data, int offset, int count)
+            {
+                using (var md5 = MD5.Create())
+                {
+                    return await Task.Run(() => md5.ComputeHash(data, offset, count));
+                }
+            }
             public static async Task<string> ComputeHashAsBase64StringAsync(byte[] data)
             {
                 var hash = await ComputeHashAsync(data);
 
                 return Convert.ToBase64String(hash);
+            }
+            public static async Task<string> ComputeHashAsBase64StringAsync(byte[] data, int offset, int count)
+            {
+                var hash = await ComputeHashAsync(data, offset, count);
+
+                return Convert.ToBase64String(hash);
+            }
+        }
+        static (ArraySegment<char> Content, string Hash) DecodeAndHash(Stream contentStream, Encoding encoding)
+        {
+            var contentLen = (int)contentStream.Length;
+            var buffer = ArrayPool<byte>.Shared.Rent(contentLen);
+            var content = ArrayPool<char>.Shared.Rent(1024);
+            try
+            {
+                using var memoryStream = new MemoryStream(buffer, 0, contentLen);
+                contentStream.CopyTo(memoryStream);
+                memoryStream.Position = 0;
+                var read = 0;
+                var hash = MD5Helper.ComputeHashAsBase64String(buffer, 0, contentLen);
+                var charBuffer = (stackalloc char[4096]);
+                using (var decodeStream = new StreamReader(memoryStream, encoding, true))
+                {
+                    while (!decodeStream.EndOfStream)
+                    {
+                        var currentRead = decodeStream.Read(charBuffer);
+                        if (currentRead == 0)
+                        {
+                            continue;
+                        }
+                        BufferHelper.EnsureBufferLength(read + currentRead, ref content);
+                        charBuffer.Slice(0, currentRead).CopyTo(content.AsSpan(read));
+                        read += currentRead;
+                    }
+                }
+                return (new ArraySegment<char>(content, 0, read), hash);
+            }
+            catch
+            {
+                ArrayPool<char>.Shared.Return(content);
+                throw;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+            }
+        }
+        static async Task<(ArraySegment<char> Content, string Hash)> DecodeAndHashAsync(Stream contentStream, Encoding encoding)
+        {
+            var contentLen = (int)contentStream.Length;
+            var buffer = ArrayPool<byte>.Shared.Rent(contentLen);
+            var charBuffer = ArrayPool<char>.Shared.Rent(4096);
+            var content = ArrayPool<char>.Shared.Rent(1024);
+            try
+            {
+                using var memoryStream = new MemoryStream(buffer, 0, contentLen);
+                await contentStream.CopyToAsync(memoryStream);
+                memoryStream.Position = 0;
+                var read = 0;
+                var hash = await MD5Helper.ComputeHashAsBase64StringAsync(buffer, 0, contentLen);
+                using (var decodeStream = new StreamReader(memoryStream, encoding, true))
+                {
+                    while (!decodeStream.EndOfStream)
+                    {
+                        var currentRead = await decodeStream.ReadAsync(charBuffer);
+                        if (currentRead == 0)
+                        {
+                            continue;
+                        }
+                        BufferHelper.EnsureBufferLength(read + currentRead, ref content);
+                        charBuffer.AsSpan(0, currentRead).CopyTo(content.AsSpan(read));
+                        read += currentRead;
+                    }
+                }
+                return (new ArraySegment<char>(content, 0, read), hash);
+            }
+            catch
+            {
+                ArrayPool<char>.Shared.Return(content);
+                throw;
+            }
+            finally
+            {
+                ArrayPool<byte>.Shared.Return(buffer);
+                ArrayPool<char>.Shared.Return(charBuffer);
             }
         }
     }
