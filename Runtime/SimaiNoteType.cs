@@ -6,6 +6,7 @@
         Slide,
         Hold,
         Touch,
-        TouchHold
+        TouchHold,
+        Command
     }
 }

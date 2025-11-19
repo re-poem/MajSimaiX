@@ -24,7 +24,7 @@ namespace MajSimai
         public bool IsSlideUnplayable { get; set; }
 
 
-        public string RawContent { get; set; } = string.Empty; //used for star explain
+        public string RawContent { get; set; } = string.Empty; //used for star explain and command note data
 
         public double SlideStartTime { get; set; }
         public double SlideTime { get; set; }

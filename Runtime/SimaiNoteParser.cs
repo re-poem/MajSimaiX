@@ -157,10 +157,18 @@ namespace MajSimai
             outSimaiNote = default;
             Span<char> noteTextCopy = stackalloc char[noteText.Length];
             noteText.CopyTo(noteTextCopy);
+            var simaiNote = new SimaiNote();
+
+            if (noteTextCopy.StartsWith("$") && noteTextCopy.EndsWith("$"))
+            {
+                simaiNote.Type = SimaiNoteType.Command;
+                simaiNote.RawContent = new string(noteTextCopy.Trim());
+                outSimaiNote = simaiNote;
+                return true;
+            }
+
             var detectResult = NoteHelper.NoteFlag.Detect(noteText, noteTextCopy);
             noteTextCopy = detectResult.NoteContent;
-
-            var simaiNote = new SimaiNote();
 
             if (detectResult.IsTouchNote)
             {
@@ -265,8 +273,8 @@ namespace MajSimai
             //Kustom
             if (detectResult.IsKustom || detectResult.IsSlideKustom)
             {
-                NoteHelper.GetKustomSkin(noteText, out var kSkin);
-                NoteHelper.GetKustomWav(noteText, out var kWav);
+                NoteHelper.GetKustomSkin(noteTextCopy, out var kSkin);
+                NoteHelper.GetKustomWav(noteTextCopy, out var kWav);
 
                 simaiNote.KustomSkin = kSkin;
                 simaiNote.KustomWav = kWav;
@@ -785,11 +793,15 @@ namespace MajSimai
                                 continue;
                             case 'c':
                                 {
-                                    if (int.TryParse(noteContent[(i+1)..(i+2)], out var number))
+                                    try
                                     {
-                                        usingSV = number;
-                                        i++;
+                                        usingSV = int.Parse(noteContent[(i + 1)..(i + 2)]);
                                     }
+                                    catch (Exception)
+                                    {
+                                        usingSV = 0;
+                                    }
+                                    i++;
                                     continue;
                                 }
                             case 't':

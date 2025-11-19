@@ -563,8 +563,9 @@ namespace MajSimai
             {
                 var isTapOrHoldOrSlide = c >= '0' && c <= '9';
                 var isTouchOrTouchHold = c >= 'A' && c <= 'E';
+                var isCommand = c == '$';
 
-                return isTapOrHoldOrSlide || isTouchOrTouchHold;
+                return isTapOrHoldOrSlide || isTouchOrTouchHold || isCommand;
             }
             if (fumen.IsEmpty)
             {
