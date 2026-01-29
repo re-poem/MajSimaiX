@@ -991,7 +991,7 @@ namespace MajSimai
                       .AppendLine(chart.Level);
                 }
             }
-            sb.Append("&des_")
+            sb.Append("&des")
               .Append('=')
               .AppendLine(finalDesigner);
             foreach (var command in simaiFile.Commands)
@@ -1012,9 +1012,12 @@ namespace MajSimai
                   .Append(i + 1)
                   .Append('=')
                   .Append(chart)
-                  .AppendLine()
-                  .Append('E')
                   .AppendLine();
+                if (!chart.EndsWith('E'))
+                {
+                    sb.Append('E')
+                      .AppendLine();
+                }
             }
             return sb.ToString();
         }
