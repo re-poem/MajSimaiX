@@ -3,6 +3,7 @@ using System.Buffers;
 using System.Collections.Generic;
 using System.Diagnostics;
 using System.Diagnostics.CodeAnalysis;
+using System.Drawing;
 using System.Linq;
 using System.Runtime.CompilerServices;
 using System.Text;
@@ -754,7 +755,7 @@ namespace MajSimai
                     for (var i = 0; i < noteContent.Length; i++)
                     {
                         ref readonly var curChar = ref noteContent[i];
-                        switch (curChar) //后面需要根据以下标志进行定位的使用break，不然返回时标志会消失
+                        switch (curChar) //后面需要根据以下标志特殊性使用break，决定返回时标志是否会消失
                         {
                             case '-':
                             case '^':
@@ -793,15 +794,11 @@ namespace MajSimai
                                 continue;
                             case 'c':
                                 {
-                                    try
+                                    usingSV = 0;
+                                    for (i++; i < noteContent.Length && int.TryParse(noteContent[i].ToString(), out var c); i++)
                                     {
-                                        usingSV = int.Parse(noteContent[(i + 1)..(i + 2)]);
+                                        usingSV = usingSV * 10 + c;
                                     }
-                                    catch (Exception)
-                                    {
-                                        usingSV = 0;
-                                    }
-                                    i++;
                                     continue;
                                 }
                             case 't':

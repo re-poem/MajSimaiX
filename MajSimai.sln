@@ -1,9 +1,11 @@
 ﻿
 Microsoft Visual Studio Solution File, Format Version 12.00
-# Visual Studio Version 17
-VisualStudioVersion = 17.12.35514.174 d17.12
+# Visual Studio Version 18
+VisualStudioVersion = 18.2.11415.280 d18.0
 MinimumVisualStudioVersion = 10.0.40219.1
 Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "MajSimai", "MajSimai.csproj", "{75FDD895-28A6-4F6F-8CAD-8B9DB6F41617}"
+EndProject
+Project("{FAE04EC0-301F-11D3-BF4B-00C04F79EFBC}") = "Test", "..\Test\Test.csproj", "{A1199380-0B13-4768-A65A-6F7C1BD929B9}"
 EndProject
 Global
 	GlobalSection(SolutionConfigurationPlatforms) = preSolution
@@ -15,6 +17,10 @@ Global
 		{75FDD895-28A6-4F6F-8CAD-8B9DB6F41617}.Debug|Any CPU.Build.0 = Debug|Any CPU
 		{75FDD895-28A6-4F6F-8CAD-8B9DB6F41617}.Release|Any CPU.ActiveCfg = Release|Any CPU
 		{75FDD895-28A6-4F6F-8CAD-8B9DB6F41617}.Release|Any CPU.Build.0 = Release|Any CPU
+		{A1199380-0B13-4768-A65A-6F7C1BD929B9}.Debug|Any CPU.ActiveCfg = Debug|Any CPU
+		{A1199380-0B13-4768-A65A-6F7C1BD929B9}.Debug|Any CPU.Build.0 = Debug|Any CPU
+		{A1199380-0B13-4768-A65A-6F7C1BD929B9}.Release|Any CPU.ActiveCfg = Release|Any CPU
+		{A1199380-0B13-4768-A65A-6F7C1BD929B9}.Release|Any CPU.Build.0 = Release|Any CPU
 	EndGlobalSection
 	GlobalSection(SolutionProperties) = preSolution
 		HideSolutionNode = FALSE
