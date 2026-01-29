@@ -880,8 +880,11 @@ namespace MajSimai
                         noteContentBuffer[noteContentBufIndex++] = curChar;
                     }
                 }
-                var noteTimingPoints = new SimaiTimingPoint[noteRawTimingBufIndex];
 
+                BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
+                commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, fumen.Length);
+                
+                var noteTimingPoints = new SimaiTimingPoint[noteRawTimingBufIndex];
                 Parallel.For(0, noteRawTimingBufIndex, i =>
                 {
                     var rawTiming = noteRawTimingBuffer[i];
