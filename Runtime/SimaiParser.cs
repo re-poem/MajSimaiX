@@ -1,6 +1,7 @@
 ﻿using MajSimai.Utils;
 using System;
 using System.Buffers;
+using System.Globalization;
 using System.IO;
 using System.Runtime.CompilerServices;
 using System.Security.Cryptography;
@@ -33,6 +34,7 @@ namespace MajSimai
         /// <returns></returns>
         public static SimaiFile Parse(SimaiMetadata metadata)
         {
+            MakeSureCulture();
             var rentedArrayForCharts = ArrayPool<SimaiChart>.Shared.Rent(7);
             try
             {
@@ -217,6 +219,7 @@ namespace MajSimai
         /// <exception cref="InvalidSimaiMarkupException"></exception>
         public static SimaiMetadata ParseMetadata(in ReadOnlySpan<char> content, string hash)
         {
+            MakeSureCulture();
             static void SetValue(ReadOnlySpan<char> value, ref string valueStr)
             {
                 if (!string.IsNullOrEmpty(valueStr))
@@ -559,6 +562,7 @@ namespace MajSimai
         /// <returns></returns>
         public static SimaiChart ParseChart(string level, string designer, ReadOnlySpan<char> fumen)
         {
+            MakeSureCulture();
             static bool IsNote(char c)
             {
                 var isTapOrHoldOrSlide = c >= '0' && c <= '9';
@@ -955,6 +959,7 @@ namespace MajSimai
         //Note: this method only deparse RawChart
         public static string Deparse(SimaiFile simaiFile)
         {
+            MakeSureCulture();
             var sb = new StringBuilder();
             var finalDesigner = string.Empty;
 
@@ -1173,6 +1178,11 @@ namespace MajSimai
                 ArrayPool<byte>.Shared.Return(buffer);
                 ArrayPool<char>.Shared.Return(charBuffer);
             }
+        }
+        static private void MakeSureCulture()
+        {
+            CultureInfo.DefaultThreadCurrentCulture = CultureInfo.InvariantCulture;
+            CultureInfo.DefaultThreadCurrentUICulture = CultureInfo.InvariantCulture;
         }
     }
 }
