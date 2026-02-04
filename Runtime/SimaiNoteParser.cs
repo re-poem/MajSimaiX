@@ -274,8 +274,8 @@ namespace MajSimai
             //Kustom
             if (detectResult.IsKustom || detectResult.IsSlideKustom)
             {
-                NoteHelper.GetKustomSkin(noteTextCopy, out var kSkin);
-                NoteHelper.GetKustomWav(noteTextCopy, out var kWav);
+                NoteHelper.GetKustomSkin(noteText, out var kSkin);
+                NoteHelper.GetKustomWav(noteText, out var kWav);
 
                 simaiNote.KustomSkin = kSkin;
                 simaiNote.KustomWav = kWav;
