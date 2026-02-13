@@ -579,6 +579,9 @@ namespace MajSimai
             var commaTimingBufIndex = 0;
 
             float bpm = 0;
+            Span<Range> signatureSplits = stackalloc Range[2];
+            int signatureNumerator = 4;
+            int signatureDenominator = 4;
             var curHSpeed = 1f;
             double time = 0; //in seconds
             var beats = 4f; //{4}
@@ -617,15 +620,49 @@ namespace MajSimai
                                 {
                                     i += 2;
                                     Xcount += 2;
-                                    for (; i < fumen.Length; i++)
+
+                                    if (fumen[i] == 's')
                                     {
-                                        if (fumen[i] == '\n')
-                                        {
-                                            Ycount++;
-                                            Xcount = 0;
-                                            break;
-                                        }
+                                        var startAt = i + 1;
+                                        i++;
                                         Xcount++;
+                                        for (; i < fumen.Length; i++)
+                                        {
+                                            if (fumen[i] == '\n')
+                                            {
+                                                Ycount++;
+                                                Xcount = 0;
+                                                break;
+                                            }
+                                            Xcount++;
+                                        }
+                                        var endAt = i;
+                                        var signatureStr = fumen[startAt..endAt].Trim();
+
+                                        if (signatureStr.Split(signatureSplits, '/') >= 2)
+                                        {
+                                            if (!int.TryParse(signatureStr[signatureSplits[0]], out signatureNumerator))
+                                            {
+                                                signatureNumerator = 4;
+                                            }
+                                            if (!int.TryParse(signatureStr[signatureSplits[1]], out signatureDenominator))
+                                            {
+                                                signatureDenominator = 4;
+                                            }
+                                        }
+                                    }
+                                    else
+                                    {
+                                        for (; i < fumen.Length; i++)
+                                        {
+                                            if (fumen[i] == '\n')
+                                            {
+                                                Ycount++;
+                                                Xcount = 0;
+                                                break;
+                                            }
+                                            Xcount++;
+                                        }
                                     }
                                 }
                                 else
@@ -866,7 +903,7 @@ namespace MajSimai
                             noteContentBufIndex = 0;
                         }
                         BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
-                        commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, i);
+                        commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, i, signatureNumerator, signatureDenominator);
 
                         time += 1d / (bpm / 60d) * 4d / beats;
                         //Console.WriteLine(time);
@@ -882,7 +919,7 @@ namespace MajSimai
                 }
 
                 BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
-                commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, fumen.Length);
+                commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, fumen.Length, signatureNumerator, signatureDenominator);
                 
                 var noteTimingPoints = new SimaiTimingPoint[noteRawTimingBufIndex];
                 Parallel.For(0, noteRawTimingBufIndex, i =>

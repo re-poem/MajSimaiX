@@ -14,17 +14,19 @@ namespace MajSimai
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
         public int RawTextPosition { get; }
+        public int SignatureNumerator { get; } = 4;
+        public int SignatureDenominator { get; } = 4;
         public SimaiNote[] Notes { get; set; } = Array.Empty<SimaiNote>();
         public bool IsEmpty => Notes.Length == 0;
 
-        public SimaiTimingPoint(double timing, SimaiNote[]? notes, ReadOnlySpan<char> rawContent, int textPosX = 0, int textPosY = 0, float bpm = 0f,
-            float hspeed = 1f, int rawTextPosition = 0)
+        public SimaiTimingPoint(double timing, SimaiNote[]? notes, ReadOnlySpan<char> rawContent, int textPosX = 0, int textPosY = 0, float bpm = 0f, 
+            float hspeed = 1f, int rawTextPosition = 0, int signatureNumerator = 0, int signatureDenominator = 0)
         {
             Timing = timing;
             RawTextPositionX = textPosX;
             RawTextPositionY = textPosY;
             RawTextPosition = rawTextPosition;
-            if(!rawContent.IsEmpty)
+            if (!rawContent.IsEmpty)
             {
                 Span<char> rCSpan = stackalloc char[rawContent.Length];
                 rawContent.Replace(rCSpan, '\n', ' ');
@@ -42,7 +44,7 @@ namespace MajSimai
                     }
                 }
                 var newRaw = rCSpan.Slice(0, i2);
-                if(newRaw != rawContent)
+                if (newRaw != rawContent)
                 {
                     RawContent = new string(rCSpan.Slice(0, i2));
                 }
@@ -61,6 +63,9 @@ namespace MajSimai
             {
                 Notes = notes;
             }
+
+            SignatureNumerator = signatureNumerator;
+            SignatureDenominator = signatureDenominator;
         }
 #if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiTimingPoint ToUnmanaged()
