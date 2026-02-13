@@ -884,8 +884,11 @@ namespace MajSimai
                         noteContentBuffer[noteContentBufIndex++] = curChar;
                     }
                 }
-                var noteTimingPoints = new SimaiTimingPoint[noteRawTimingBufIndex];
 
+                BufferHelper.EnsureBufferLength(commaTimingBufIndex + 1, ref commaTimingBuffer);
+                commaTimingBuffer[commaTimingBufIndex++] = new SimaiTimingPoint(time, null, string.Empty, Xcount, Ycount, bpm, 1, fumen.Length);
+                
+                var noteTimingPoints = new SimaiTimingPoint[noteRawTimingBufIndex];
                 Parallel.For(0, noteRawTimingBufIndex, i =>
                 {
                     var rawTiming = noteRawTimingBuffer[i];
@@ -993,7 +996,7 @@ namespace MajSimai
                       .AppendLine(chart.Level);
                 }
             }
-            sb.Append("&des_")
+            sb.Append("&des")
               .Append('=')
               .AppendLine(finalDesigner);
             foreach (var command in simaiFile.Commands)
@@ -1014,9 +1017,12 @@ namespace MajSimai
                   .Append(i + 1)
                   .Append('=')
                   .Append(chart)
-                  .AppendLine()
-                  .Append('E')
                   .AppendLine();
+                if (!chart.EndsWith('E'))
+                {
+                    sb.Append('E')
+                      .AppendLine();
+                }
             }
             return sb.ToString();
         }
