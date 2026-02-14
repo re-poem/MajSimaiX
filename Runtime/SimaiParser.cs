@@ -621,7 +621,7 @@ namespace MajSimai
                                     i += 2;
                                     Xcount += 2;
 
-                                    if (fumen[i] == 's')
+                                    if (str.Length >= 6 && fumen[i] == 's') // ||sx/x
                                     {
                                         var startAt = i + 1;
                                         i++;
