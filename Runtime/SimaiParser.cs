@@ -382,31 +382,31 @@ namespace MajSimai
                                         var isEOF = false;
                                         range = ranges[i];
                                         maidataTxt = content[range].Trim();
-                                        if (maidataTxt.IsEmpty)
+                                        if (!maidataTxt.IsEmpty)
                                         {
-                                            continue;
-                                        }
-                                        else if (maidataTxt[0] == '&')
-                                        {
-                                            isEOF = true;
-                                            i--;
-                                            break;
-                                        }
-                                        for (var i2 = 0; i2 < maidataTxt.Length; i2++)
-                                        {
-                                            ref readonly var current = ref maidataTxt[i2];
-                                            //if (current == 'E')
+                                            if (maidataTxt[0] == '&')
+                                            {
+                                                isEOF = true;
+                                                i--;
+                                                break;
+                                            }
+                                            for (var i2 = 0; i2 < maidataTxt.Length; i2++)
+                                            {
+                                                ref readonly var current = ref maidataTxt[i2];
+                                                //if (current == 'E')
+                                                //{
+                                                //    isEOF = true;
+                                                //    break;
+                                                //}
+                                                BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
+                                                buffer[bufferIndex++] = current;
+                                            }
+                                            //if (isEOF)
                                             //{
-                                            //    isEOF = true;
                                             //    break;
                                             //}
-                                            BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
-                                            buffer[bufferIndex++] = current;
                                         }
-                                        //if (isEOF)
-                                        //{
-                                        //    break;
-                                        //}
+
                                         BufferHelper.EnsureBufferLength(bufferIndex + 1, ref buffer);
                                         buffer[bufferIndex++] = '\n';
                                     }
