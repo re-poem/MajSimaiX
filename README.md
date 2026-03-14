@@ -24,16 +24,12 @@ MajSimai is an interpreter for [Simai](https://w.atwiki.jp/simai/), written in [
     - [x] Fake rotation `1$$`
 - [x] Hold `1h[duration]`
   - [x] Short form `1h`
-  - [x] Break flag
-    - `1bh`
-    - `1hb`
-  - [x] Mine flag
-    - `1bm`
-    - `1mb`
+  - [x] Break flag `1hb`
+  - [x] Mine flag `1bm`
   - Duration format:
-    - [x] Common `[int:int]`
-    - [x] With absolute time `[#float]`
-    - [x] With custom BPM `[float#int:int]`
+    - [x] Common `[division:beats]`
+    - [x] With absolute time `[#time]`
+    - [x] With custom BPM `[bpm#division:beats]`
 - [x] Slide `x-y[duration]`
   - [x] Same head `1-3[duration]*-7[duration]`
   - [x] Break flag
@@ -48,11 +44,14 @@ MajSimai is an interpreter for [Simai](https://w.atwiki.jp/simai/), written in [
   - [x] No head slide:
     - [x] `1?-3[duration]`
     - [x] `1!-3[duration]`
+  - [x] Tap head slide: `1@-3[duration]`
   - Duration format:
-    - [x] `[160#2.0]`
-    - [x] `[3.0##1.5]`
-    - [x] `[3.0##4:1]`
-    - [x] `[3.0##160#4:1]`
+    - [x] Common `[division:beats]`
+    - [x] With _custom BPM_ `[bpm#division:beats]`
+    - [x] With _custom BPM_ and **absolute slide length** `[bpm#time]`
+    - [x] With **absolute slide start time** and common slide length `[time##division:beats]`
+    - [x] With **absolute slide start time** and **absolute slide length** `[time##time]`
+    - [x] With **absolute slide start time** and **custom BPM length** `[time##bpm#division:beats]`
 - [x] Touch `B1`
   - [x] Hanabi flag `B1f`
   - [x] Break flag `B1b`
@@ -65,9 +64,9 @@ MajSimai is an interpreter for [Simai](https://w.atwiki.jp/simai/), written in [
   - [x] Mine flag `B1hm[duration]`
   - [x] Ex flag `B1hx[duration]`
   - Duration format:
-    - [x] Common `[int:int]`
-    - [x] With absolute time `[#float]`
-    - [x] With custom BPM `[float#int:int]`
+    - [x] Common `[division:beats]`
+    - [x] With absolute time `[#time]`
+    - [x] With custom BPM `[bpm#division:beats]`
 - [x] Each note `note/note`
   - [x] Fake each ``1`2`3`4,``
 - [ ] EOF flag `E`
