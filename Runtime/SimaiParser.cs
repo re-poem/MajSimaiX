@@ -842,7 +842,8 @@ namespace MajSimai
                                                                             Xcount,
                                                                             Ycount,
                                                                             bpm,
-                                                                            curHSpeed);
+                                                                            curHSpeed,
+                                                                            i);
                                         BufferHelper.EnsureBufferLength(noteRawTimingBufIndex + 1, ref noteRawTimingBuffer);
                                         noteRawTimingBuffer[noteRawTimingBufIndex++] = rawTp;
                                         fakeTime += timeInterval;
@@ -860,7 +861,8 @@ namespace MajSimai
                                                                     Xcount,
                                                                     Ycount,
                                                                     bpm,
-                                                                    curHSpeed);
+                                                                    curHSpeed,
+                                                                    i);
                                 BufferHelper.EnsureBufferLength(noteRawTimingBufIndex + 1, ref noteRawTimingBuffer);
                                 noteRawTimingBuffer[noteRawTimingBufIndex++] = rawTp;
                             }
