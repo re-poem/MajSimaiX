@@ -14,13 +14,15 @@ namespace MajSimai
         public string RawContent { get; }
         public int RawTextPositionX { get; }
         public int RawTextPositionY { get; }
+        public int RawTextPosition { get; }
 
         public SimaiRawTimingPoint(double timing, ReadOnlySpan<char> rawContent, int textPosX = 0, int textPosY = 0, float bpm = 0f,
-            float hspeed = 1f)
+            float hspeed = 1f, int textPos = 0)
         {
             Timing = timing;
             RawTextPositionX = textPosX;
             RawTextPositionY = textPosY;
+            RawTextPosition = textPos;
             if (!rawContent.IsEmpty)
             {
                 Span<char> rCSpan = stackalloc char[rawContent.Length];
@@ -59,7 +61,7 @@ namespace MajSimai
         {
             var notes = SimaiNoteParser.GetNotes(Timing, Bpm, RawContent);
 
-            return new SimaiTimingPoint(Timing, notes, RawContent, RawTextPositionX, RawTextPositionY, Bpm, HSpeed);
+            return new SimaiTimingPoint(Timing, notes, RawContent, RawTextPositionX, RawTextPositionY, Bpm, HSpeed, RawTextPosition);
         }
         public Task<SimaiTimingPoint> ParseAsync()
         {
