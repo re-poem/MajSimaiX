@@ -421,17 +421,17 @@ namespace MajSimai
                             break;
                     }
                 }
-                if (!string.IsNullOrEmpty(finalDesigner))
-                {
-                    for (var j = 0; j < 7; j++)
-                    {
-                        ref var d = ref designers[j];
-                        if (string.IsNullOrEmpty(d))
-                        {
-                            d = finalDesigner;
-                        }
-                    }
-                }
+                //if (!string.IsNullOrEmpty(designer))
+                //{
+                //    for (var j = 0; j < 7; j++)
+                //    {
+                //        ref var d = ref designers[j];
+                //        if (string.IsNullOrEmpty(d))
+                //        {
+                //            d = designer;
+                //        }
+                //    }
+                //}
                 var encoding = Encoding.UTF8;
                 var byteCount = encoding.GetByteCount(content);
                 var bytes = new byte[byteCount];
