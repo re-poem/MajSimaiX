@@ -1052,11 +1052,11 @@ namespace MajSimai
                   .Append('=')
                   .Append(chart)
                   .AppendLine();
-                if (!chart.EndsWith('E'))
-                {
-                    sb.Append('E')
-                      .AppendLine();
-                }
+                //if (!chart.EndsWith('E'))
+                //{
+                //    sb.Append('E')
+                //      .AppendLine();
+                //}
             }
             return sb.ToString();
         }
