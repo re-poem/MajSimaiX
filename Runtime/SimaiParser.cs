@@ -53,7 +53,7 @@ namespace MajSimai
                         Console.WriteLine(ex);
                     }
                 });
-                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.FinalDesigner, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
                 var cmds = simaiFile.Commands;
                 var cmdCount = metadata.Commands.Length;
                 for (var i = 0; i < cmdCount; i++)
@@ -167,7 +167,7 @@ namespace MajSimai
                     }
                 }
 
-                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.FinalDesigner, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
                 var cmds = simaiFile.Commands;
                 var cmdCount = metadata.Commands.Length;
                 for (var i = 0; i < cmdCount; i++)
@@ -234,7 +234,7 @@ namespace MajSimai
             }
             var title = string.Empty;
             var artist = string.Empty;
-            var designer = string.Empty;
+            var finalDesigner = string.Empty;
             var first = 0f;
             var rentedArrayForDesigners = ArrayPool<string>.Shared.Rent(7);
             var rentedArrayForFumens = ArrayPool<string>.Shared.Rent(7);
@@ -286,7 +286,7 @@ namespace MajSimai
                             SetValue(valueStr, ref artist);
                             break;
                         case "des":
-                            SetValue(valueStr, ref designer);
+                            SetValue(valueStr, ref finalDesigner);
                             break;
                         case "des_1":
                             SetValue(valueStr, ref designers[0]);
@@ -421,14 +421,14 @@ namespace MajSimai
                             break;
                     }
                 }
-                if (!string.IsNullOrEmpty(designer))
+                if (!string.IsNullOrEmpty(finalDesigner))
                 {
                     for (var j = 0; j < 7; j++)
                     {
                         ref var d = ref designers[j];
                         if (string.IsNullOrEmpty(d))
                         {
-                            d = designer;
+                            d = finalDesigner;
                         }
                     }
                 }
@@ -438,6 +438,7 @@ namespace MajSimai
                 encoding.GetBytes(content, bytes);
                 return new SimaiMetadata(title,
                                          artist,
+                                         finalDesigner,
                                          first,
                                          designers,
                                          levels,
@@ -972,6 +973,8 @@ namespace MajSimai
               .AppendLine(simaiFile.Title)
               .Append($"&artist=")
               .AppendLine(simaiFile.Artist)
+              .Append($"&des=")
+              .AppendLine(simaiFile.FinalDesigner)
               .Append("&first=")
               .Append(simaiFile.Offset)
               .AppendLine();
@@ -998,9 +1001,6 @@ namespace MajSimai
                       .AppendLine(chart.Level);
                 }
             }
-            sb.Append("&des")
-              .Append('=')
-              .AppendLine(finalDesigner);
             foreach (var command in simaiFile.Commands)
             {
                 sb.Append('&')

@@ -11,6 +11,7 @@ namespace MajSimai
     {
         public string Title { get; set; }
         public string Artist { get; set; }
+        public string FinalDesigner { get; set; }
         public float Offset { get; set; }
         public SimaiChart[] Charts
         {
@@ -33,12 +34,14 @@ namespace MajSimai
 
         public SimaiFile(string title, 
                          string artist, 
+                         string finalDesigner, 
                          float offset,
                          string hash,
                          IEnumerable<SimaiChart>? levels, IEnumerable<SimaiCommand>? commands)
         {
             Title = title ?? string.Empty;
             Artist = artist ?? string.Empty;
+            FinalDesigner = finalDesigner ?? string.Empty;
             Offset = offset;
             Hash = hash ?? string.Empty;
 
@@ -78,13 +81,14 @@ namespace MajSimai
                 string.Empty
             };
 
-            return new SimaiFile(title, artist, 0, string.Empty, emptyCharts, Array.Empty<SimaiCommand>());
+            return new SimaiFile(title, artist, string.Empty, 0, string.Empty, emptyCharts, Array.Empty<SimaiCommand>());
         }
 #if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiFile ToUnmanaged()
         {
             var titlePtr = (char*)null;
             var artistPtr = (char*)null;
+            var finalDesignerPtr = (char*)null;
             var chartArray = (MajSimai.Unmanaged.UnmanagedSimaiChart*)Marshal.AllocHGlobal(sizeof(MajSimai.Unmanaged.UnmanagedSimaiChart) * 7);
             var commandArray = (MajSimai.Unmanaged.UnmanagedSimaiCommand*)null;
 
@@ -95,6 +99,10 @@ namespace MajSimai
             if (!string.IsNullOrEmpty(Artist))
             {
                 artistPtr = (char*)Marshal.StringToHGlobalAnsi(Artist);
+            }
+            if (!string.IsNullOrEmpty(FinalDesigner))
+            {
+                finalDesignerPtr = (char*)Marshal.StringToHGlobalAnsi(FinalDesigner);
             }
             for (var i = 0; i < 7; i++)
             {
@@ -116,6 +124,9 @@ namespace MajSimai
 
                 artist = artistPtr,
                 artistLen = Artist.Length,
+
+                finalDesigner = finalDesignerPtr,
+                finalDesignerLen = FinalDesigner.Length,
 
                 offset = Offset,
 
