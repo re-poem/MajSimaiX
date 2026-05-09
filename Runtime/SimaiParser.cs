@@ -53,7 +53,7 @@ namespace MajSimai
                         Console.WriteLine(ex);
                     }
                 });
-                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.FinalDesigner, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, metadata.Hash, rentedArrayForCharts, null, metadata.FinalDesigner);
                 var cmds = simaiFile.Commands;
                 var cmdCount = metadata.Commands.Length;
                 for (var i = 0; i < cmdCount; i++)
@@ -167,7 +167,7 @@ namespace MajSimai
                     }
                 }
 
-                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.FinalDesigner, metadata.Offset, metadata.Hash, rentedArrayForCharts, null);
+                var simaiFile = new SimaiFile(metadata.Title, metadata.Artist, metadata.Offset, metadata.Hash, rentedArrayForCharts, null, metadata.FinalDesigner);
                 var cmds = simaiFile.Commands;
                 var cmdCount = metadata.Commands.Length;
                 for (var i = 0; i < cmdCount; i++)
@@ -438,13 +438,13 @@ namespace MajSimai
                 encoding.GetBytes(content, bytes);
                 return new SimaiMetadata(title,
                                          artist,
-                                         finalDesigner,
                                          first,
                                          designers,
                                          levels,
                                          fumens,
                                          commands.AsSpan(0, cI),
-                                         hash);
+                                         hash,
+                                         finalDesigner);
             }
             catch (InvalidSimaiMarkupException)
             {

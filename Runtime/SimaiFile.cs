@@ -34,10 +34,11 @@ namespace MajSimai
 
         public SimaiFile(string title, 
                          string artist, 
-                         string finalDesigner, 
                          float offset,
                          string hash,
-                         IEnumerable<SimaiChart>? levels, IEnumerable<SimaiCommand>? commands)
+                         IEnumerable<SimaiChart>? levels, 
+                         IEnumerable<SimaiCommand>? commands,
+                         string finalDesigner = "")
         {
             Title = title ?? string.Empty;
             Artist = artist ?? string.Empty;
@@ -81,7 +82,7 @@ namespace MajSimai
                 string.Empty
             };
 
-            return new SimaiFile(title, artist, string.Empty, 0, string.Empty, emptyCharts, Array.Empty<SimaiCommand>());
+            return new SimaiFile(title, artist, 0, string.Empty, emptyCharts, Array.Empty<SimaiCommand>());
         }
 #if NET7_0_OR_GREATER
         internal unsafe MajSimai.Unmanaged.UnmanagedSimaiFile ToUnmanaged()

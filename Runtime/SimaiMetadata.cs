@@ -52,12 +52,13 @@ namespace MajSimai
         readonly string[] _fumens;
         readonly SimaiCommand[] _commands;
 
-        public SimaiMetadata(string title, string artist, string finalDesigner, float offset, 
+        public SimaiMetadata(string title, string artist, float offset, 
                              IEnumerable<string>? designers,
                              IEnumerable<string>? levels,
                              IEnumerable<string>? fumens,
                              IEnumerable<SimaiCommand>? commands,
-                             string hash)
+                             string hash,
+                             string finalDesigner = "")
         {
             if(hash is null)
             {
@@ -125,12 +126,13 @@ namespace MajSimai
                 ArrayPool<SimaiCommand>.Shared.Return(buffer);
             }
         }
-        public SimaiMetadata(string title, string artist, string finalDesigner, float offset, 
+        public SimaiMetadata(string title, string artist, float offset, 
                              ReadOnlySpan<string> designers,
                              ReadOnlySpan<string> levels,
                              ReadOnlySpan<string> fumens,
                              ReadOnlySpan<SimaiCommand> commands,
-                             string hash)
+                             string hash,
+                             string finalDesigner = "")
         {
             if (hash is null)
             {
