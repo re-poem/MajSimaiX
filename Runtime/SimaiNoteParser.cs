@@ -645,11 +645,23 @@ namespace MajSimai
                             case 's':
                             case 'z':
                             case 'w':
+                            case 'P': // Slide Code
+                            case 'Q':
+                            case 'K':
                                 isSlide = true;
                                 break;
                             case 'A':
                             case 'B':
                             case 'C':
+                                if (i != 0) // Slide Code
+                                {
+                                    isSlide = true;
+                                }
+                                else
+                                {
+                                    isTouchNote = true;
+                                }
+                                break;
                             case 'D':
                             case 'E':
                                 isTouchNote = true;
